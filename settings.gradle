@@ -1,0 +1,3 @@
+rootProject.name = 'LTPC2020-3-10_version'
+include 'display'
+

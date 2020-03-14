@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane prefHeight="925.0000999999975" prefWidth="961.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="com.wy.display.config.ConfigController">
+  <children>
+    <TextArea fx:id="ConfigLog" layoutX="27.0" layoutY="234.0" prefHeight="677.0" prefWidth="829.0" promptText="日志信息" wrapText="true" />
+    <Button fx:id="controlButton" layoutX="55.0" layoutY="28.0" mnemonicParsing="false" onAction="#controlButtonAction" prefHeight="62.0" prefWidth="123.0" text="Config">
+      <font>
+        <Font size="20.0" fx:id="x1" />
+      </font>
+    </Button>
+    <Button id="FileOpen" fx:id="ColorButton" font="$x1" layoutX="206.0" layoutY="28.0" mnemonicParsing="false" onAction="#ColorButtonAction" prefHeight="63.0" prefWidth="123.0" text="Color" textAlignment="LEFT" />
+    <HBox layoutX="27.0" layoutY="151.0" prefHeight="54.0" prefWidth="918.0" spacing="20.0">
+      <children>
+        <TextField id="Trigger" fx:id="triggerNum" prefHeight="52.0" prefWidth="151.0" promptText="触发号" />
+        <TextField id="Trigger" fx:id="planeNum" prefHeight="52.0" prefWidth="158.0" promptText="平面序号" />
+        <TextField id="Trigger" fx:id="trackerNum" prefHeight="52.0" prefWidth="152.0" promptText="路径序号" />
+        <TextField id="Trigger" fx:id="channelNum" prefHeight="52.0" prefWidth="168.0" promptText="通道号" />
+        <Button fx:id="image" font="$x1" mnemonicParsing="false" onAction="#imageAction" prefHeight="54.0" prefWidth="142.0" text="Info" />
+        <Button fx:id="fillButton" font="$x1" mnemonicParsing="false" onAction="#fillButtonAction" prefHeight="54.0" prefWidth="142.0" text="Fill" />
+      </children>
+    </HBox>
+    <HBox layoutX="425.0" layoutY="30.0" prefHeight="62.0" prefWidth="398.0" spacing="20.0">
+      <children>
+        <ProgressBar id="fileProcessBar" fx:id="fileProgressBar" prefHeight="46.0" prefWidth="255.0" progress="0.0">
+          <HBox.margin>
+            <Insets top="8.0" />
+          </HBox.margin>
+        </ProgressBar>
+        <Button id="FileOpen" font="$x1" mnemonicParsing="false" onAction="#FileOpenAction" prefHeight="63.0" prefWidth="123.0" text="FileOpen" />
+      </children>
+    </HBox>
+  </children>
+</AnchorPane>

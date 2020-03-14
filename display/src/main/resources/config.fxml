@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane prefHeight="925.0000999999975" prefWidth="961.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="com.wy.display.config.ConfigController">
+  <children>
+    <TextArea fx:id="ConfigLog" layoutX="27.0" layoutY="234.0" prefHeight="677.0" prefWidth="829.0" promptText="日志信息" wrapText="true" />
+    <HBox layoutX="27.0" layoutY="151.0" prefHeight="54.0" prefWidth="918.0" spacing="20.0">
+      <children>
+        <TextField id="Trigger" fx:id="triggerNum" prefHeight="52.0" prefWidth="151.0" promptText="触发号" />
+        <TextField id="Trigger" fx:id="planeNum" prefHeight="52.0" prefWidth="158.0" promptText="平面序号" />
+        <TextField id="Trigger" fx:id="trackerNum" prefHeight="52.0" prefWidth="152.0" promptText="路径序号" />
+        <TextField id="Trigger" fx:id="channelNum" prefHeight="52.0" prefWidth="168.0" promptText="通道号" />
+        <Button fx:id="image" mnemonicParsing="false" onAction="#imageAction" prefHeight="54.0" prefWidth="142.0" text="Info">
+          <font>
+            <Font size="20.0" fx:id="x1" />
+          </font>
+        </Button>
+        <Button fx:id="fillButton" font="$x1" mnemonicParsing="false" onAction="#fillButtonAction" prefHeight="54.0" prefWidth="142.0" text="Fill" />
+      </children>
+    </HBox>
+    <HBox layoutX="27.0" layoutY="81.0" prefHeight="54.0" prefWidth="669.0" spacing="30.0">
+      <children>
+        <Button fx:id="controlButton" font="$x1" mnemonicParsing="false" onAction="#controlButtonAction" prefHeight="54.0" prefWidth="140.0" text="Config" />
+        <Button font="$x1" mnemonicParsing="false" onAction="#creatDataAction" prefHeight="54.0" prefWidth="140.0" text="Creat Data" />
+        <Button id="FileOpen" fx:id="ColorButton" font="$x1" mnemonicParsing="false" onAction="#ColorButtonAction" prefHeight="54.0" prefWidth="140.0" text="Color" textAlignment="LEFT" />
+        <Button id="FileOpen" font="$x1" mnemonicParsing="false" onAction="#FileOpenAction" prefHeight="54.0" prefWidth="140.0" text="FileOpen" />
+      </children>
+    </HBox>
+    <HBox layoutX="189.0" layoutY="14.0" prefHeight="52.0" prefWidth="533.0" spacing="120.0">
+      <children>
+        <TextField id="TriggerCount" fx:id="triggerCount" prefHeight="52.0" prefWidth="160.0" promptText="Trigger Count" />
+        <ProgressBar id="fileProcessBar" fx:id="fileProgressBar" prefHeight="54.0" prefWidth="250.0" progress="0.0" />
+      </children>
+    </HBox>
+  </children>
+</AnchorPane>

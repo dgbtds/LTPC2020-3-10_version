@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane fx:id="root" prefHeight="948.0" prefWidth="1115.999977929685" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="com.wy.display.detector.DetectorPaintController">
+  <children>
+    <AnchorPane id="DetectorPaint" fx:id="detectorPane" layoutX="43.0" layoutY="34.0" prefHeight="880.0" prefWidth="1025.0" />
+  </children>
+</AnchorPane>
