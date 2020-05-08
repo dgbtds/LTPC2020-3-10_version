@@ -1,8 +1,13 @@
 package com.wy.model.decetor;
 
-import java.util.List;
+import scala.Serializable;
 
-public class LtpcDetector {
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class LtpcDetector implements Serializable {
+	public static HashMap<Integer,LtpcSourceBoard> SourceBoardMap=new HashMap<>(20);
 	private List<LtpcArea>areas;
 	private List<LtpcBoard>boards;
 	private List<LtpcChannel>channels;
@@ -38,23 +43,23 @@ public class LtpcDetector {
 	@Override
 	public String toString() {
 		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append("-------Detector信息如下---------\n");
-		System.out.println();
-	   for (int i = 0; i < this.areas.size(); i++) {
-		   stringBuilder.append("   区块"+i+",board数目："+this.areas.get(i).SizeList()+"\n");
-			for (int j = 0; j < this.areas.get(i).getList().size(); j++) {
-				stringBuilder.append("------>boardNum:"+j+"  ,含有通道："+this.areas.get(i).getList().get(j).getList().size()+"\n");
-			}
+		stringBuilder.append("-------Detector Info---------\n");
+
+		stringBuilder.append("    ######### Board Info #########\n");
+		stringBuilder.append("        Board Count: "+SourceBoardMap.size()+"\n");
+		for(Map.Entry<Integer,LtpcSourceBoard> entry:SourceBoardMap.entrySet()){
+			stringBuilder.append("        BoardNum: "+entry.getKey()+" ,Channel Count: "+entry.getValue().getLtpcChannels().size()+"\n");
 		}
-	   stringBuilder.append("\n\n-----通道和(平面,激光)序号对应关系-----\n");
-	   channels.forEach(c->{
-		   stringBuilder.append("\n通道序列号:"+c.getPid()+" --(平面,激光)--");
-		   PlaneWithTrack[] planeWithTracks = c.getPlaneWithTracks();
-		   for(PlaneWithTrack pwt:planeWithTracks){
-		   	stringBuilder.append("("+pwt.getPlane().planeNum+","+pwt.getTracker().trackerNum+"); ");
-		   }
-	   });
-	   return stringBuilder.toString();
+
+		stringBuilder.append("\n\n    #########ChannelId (Plane,Laser,Cluster)#########\n");
+		channels.forEach(c->{
+			stringBuilder.append("\n            ChannelId:"+c.getPid()+" --(Plane,Laser,cluster)--");
+			PlaneWithTrack[] planeWithTracks = c.getPlaneWithTracks();
+			for(PlaneWithTrack pwt:planeWithTracks){
+				stringBuilder.append("("+pwt.getPlane().planeNum+","+pwt.getTracker().trackerNum+","+pwt.getTracker().cluster+"); ");
+			}
+		});
+		return stringBuilder.toString();
 	}
 
 }

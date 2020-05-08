@@ -1,8 +1,10 @@
 package com.wy.model.decetor;
 
-import javafx.scene.shape.Rectangle;
+import com.wy.model.data.Rectangle;
+import scala.Serializable;
 
-public class LtpcChannel {
+
+public class LtpcChannel implements Serializable {
 	private int pid;//通道序列号
 	  private int area;//探测器区号	) 
 		private int board;//探测器分区分块号
@@ -18,6 +20,15 @@ public class LtpcChannel {
 	private int sourceBoardNum;//来源板号
 	private Rectangle rectangle;
 	private PlaneWithTrack[] planeWithTracks;
+	private int ClickCount=0;
+
+	public int getClickCount() {
+		return ClickCount;
+	}
+
+	public void setClickCount(int clickCount) {
+		ClickCount = clickCount;
+	}
 
 	public PlaneWithTrack[] getPlaneWithTracks() {
 		return planeWithTracks;

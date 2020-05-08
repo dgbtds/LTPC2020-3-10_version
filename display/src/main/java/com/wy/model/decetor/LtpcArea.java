@@ -1,9 +1,11 @@
 package com.wy.model.decetor;
 
+import scala.Serializable;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class LtpcArea {
+public class LtpcArea implements Serializable {
 	private List<LtpcBoard>list=new ArrayList<>();
 	private int area;
 	public List<LtpcBoard> getList() {

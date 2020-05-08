@@ -5,7 +5,9 @@ package com.wy.model.data;/**
  * @Data : 2020/3/7 16:51
  */
 
-import java.util.ArrayList;
+import scala.Serializable;
+
+import java.util.*;
 
 /**
  * @program: LTPC2020-3-4-version2
@@ -16,12 +18,48 @@ import java.util.ArrayList;
  *
  * @create: 2020-03-07 16:51
  **/
-public class DataSource {
+public class DataSource implements Serializable {
     private String filePath;
+    private int allPackageCount;
+    private int rawDataPackageCount;
     private int triggerCount;//触发数量
-    private ArrayList<SimplifyData> sdList;
+    private Map<Integer,Integer> everyTriggerPckCount;//每个触发包的数量
+    private Map<Integer,Long> everyTriggerTime;//每个触发包的时间包
+    private List<SimplifyData> sdList;
     private int chargeMax;
     private int chargeMin;
+
+    public int getRawDataPackageCount() {
+        return rawDataPackageCount;
+    }
+
+    public void setRawDataPackageCount(int rawDataPackageCount) {
+        this.rawDataPackageCount = rawDataPackageCount;
+    }
+
+    public Map<Integer, Long> getEveryTriggerTime() {
+        return everyTriggerTime;
+    }
+
+    public void setEveryTriggerTime(Map<Integer, Long> everyTriggerTime) {
+        this.everyTriggerTime = everyTriggerTime;
+    }
+
+    public int getAllPackageCount() {
+        return allPackageCount;
+    }
+
+    public void setAllPackageCount(int allPackageCount) {
+        this.allPackageCount = allPackageCount;
+    }
+
+    public Map<Integer, Integer> getEveryTriggerPckCount() {
+        return everyTriggerPckCount;
+    }
+
+    public void setEveryTriggerPckCount(Map<Integer, Integer> everyTriggerPckCount) {
+        this.everyTriggerPckCount = everyTriggerPckCount;
+    }
 
     public int getChargeMax() {
         return chargeMax;
@@ -55,25 +93,27 @@ public class DataSource {
         this.triggerCount = triggerCount;
     }
 
-    public ArrayList<SimplifyData> getSdList() {
+    public List<SimplifyData> getSdList() {
         return sdList;
     }
 
-    public void setSdList(ArrayList<SimplifyData> sdList) {
+    public void setSdList(List<SimplifyData> sdList) {
         this.sdList = sdList;
     }
     @Override
     public String toString(){
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("\n\n数据源路径："+filePath);
-        stringBuilder.append("\n触发数："+triggerCount+"\n数据包简化数据：\n");
-        stringBuilder.append("\n电荷最大值："+chargeMax);
-        stringBuilder.append("\n电荷最小值："+chargeMin+"\n");
-        if (sdList!=null) {
-            sdList.forEach(simplifyData -> {
-                stringBuilder.append(simplifyData.toString());
-            });
-        }
+        stringBuilder.append("\ndataFile path："+filePath);
+        stringBuilder.append("\nrawDataPackageCount Count："+rawDataPackageCount);
+        stringBuilder.append("\nAnalyseDataPackage Count："+allPackageCount);
+        stringBuilder.append("\nTrigger Count："+triggerCount);
+        stringBuilder.append("\nMax pointEnergy ："+chargeMax);
+        stringBuilder.append("\nMin pointEnergy："+chargeMin+"\n");
+        stringBuilder.append("\nData rate"+(double)allPackageCount/(double)(triggerCount*20)+"\n");
+        stringBuilder.append("\nEveryPackage Count： \n");
+        everyTriggerPckCount.forEach( (k,v)->{
+            stringBuilder.append("      Trigger: "+k+" , packageCount: "+v+"\n");
+        } );
         return stringBuilder.toString();
     }
 }

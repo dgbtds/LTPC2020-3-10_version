@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane fx:id="root" prefHeight="787.0" prefWidth="995.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="com.wy.display.statistics.StatisticsController">
+  <children>
+    <MenuBar fx:id="menuBar" layoutX="0.0" layoutY="0.0" prefHeight="28.0" prefWidth="995.0">
+      <menus>
+        <Menu mnemonicParsing="false" text="Statistics" fx:id="statisticsMenu">
+          <items>
+            <MenuItem mnemonicParsing="false" style="" text="Data Overview" fx:id="textMenuItem" />
+            <SeparatorMenuItem mnemonicParsing="false" />
+            <Menu mnemonicParsing="false" text="Hit Map" fx:id="chartMeun">
+              <items>
+                <CheckMenuItem mnemonicParsing="false" text="Boad Hitmap" fx:id="boardHitMap" />
+                <CheckMenuItem mnemonicParsing="false" text="Channel Hitmap" fx:id="channelHitMap" />
+              </items>
+            </Menu>
+            <Menu mnemonicParsing="false" text="Energy Spectrum" fx:id="energyMap">
+              <items>
+                <CheckMenuItem mnemonicParsing="false" text="Frequency Chart" fx:id="frequency" />
+                <CheckMenuItem mnemonicParsing="false" text="Energy Loss Chart" fx:id="energyLoss" />
+              </items>
+            </Menu>
+          </items>
+        </Menu>
+      </menus>
+    </MenuBar>
+    <HBox fx:id="hBox" layoutX="31.0" layoutY="65.0" prefHeight="681.0" prefWidth="919.0" spacing="20.0" />
+  </children>
+</AnchorPane>

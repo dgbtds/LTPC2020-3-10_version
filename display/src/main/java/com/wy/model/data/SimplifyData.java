@@ -7,6 +7,7 @@ package com.wy.model.data;/**
 
 import com.wy.model.decetor.LtpcChannel;
 import javafx.scene.shape.Rectangle;
+import scala.Serializable;
 
 /**
  * @program: LTPC2020-3-4-version2
@@ -17,7 +18,7 @@ import javafx.scene.shape.Rectangle;
  *
  * @create: 2020-03-08 21:45
  **/
-public class SimplifyData {
+public class SimplifyData implements Serializable {
     private LtpcChannel ltpcChannel;
     private int triggerNum;
     private int planeNum;

@@ -5,6 +5,8 @@ package com.wy.model.decetor;/**
  * @Data : 2020/3/11 17:49
  */
 
+import scala.Serializable;
+
 /**
  * @program: LTPC2020-3-10_version
  *
@@ -14,7 +16,7 @@ package com.wy.model.decetor;/**
  *
  * @create: 2020-03-11 17:49
  **/
-public class Plane {
+public class Plane implements Serializable {
     public  int planeNum;
     public  Tracker[] planeTrackers;
 

@@ -5,6 +5,8 @@ package com.wy.model.decetor;/**
  * @vesion:1.0
  * @Data : 2020/3/11 17:08
  */
+import scala.Serializable;
+
 import static  com.wy.model.decetor.Plane.*;
 import static  com.wy.model.decetor.Tracker.*;
 /**
@@ -16,7 +18,7 @@ import static  com.wy.model.decetor.Tracker.*;
  *
  * @create: 2020-03-11 17:08
  **/
-public class PlaneWithTrack {
+public class PlaneWithTrack implements Serializable {
     private Plane plane;
     private Tracker tracker;
 

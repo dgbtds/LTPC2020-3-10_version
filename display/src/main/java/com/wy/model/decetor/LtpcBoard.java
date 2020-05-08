@@ -1,11 +1,13 @@
 package com.wy.model.decetor;
 
 
+import scala.Serializable;
+
 import java.util.ArrayList;
 import java.util.List;
 
-
-public class LtpcBoard {
+//之前使用的板号
+public class LtpcBoard implements Serializable {
 	private int board;
 	private int area;
 

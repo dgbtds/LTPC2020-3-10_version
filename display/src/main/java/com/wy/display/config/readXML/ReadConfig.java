@@ -12,8 +12,7 @@ import org.apache.poi.ss.usermodel.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * @program: LTPC 2020-3-4
@@ -137,6 +136,28 @@ public class ReadConfig {
             }
 
             ltpcBoard.addList(listChannels.get(i));
+        }
+
+        listChannels.forEach(c->{
+            if (c.getSourceBoardNum()!=0){
+                if (LtpcDetector.SourceBoardMap.containsKey(c.getSourceBoardNum())){
+                    LtpcSourceBoard ltpcSourceBoard = LtpcDetector.SourceBoardMap.get(c.getSourceBoardNum());
+                    ltpcSourceBoard.getLtpcChannels().add(c);
+                }
+                else {
+                    LtpcSourceBoard ltpcSourceBoard = new LtpcSourceBoard();
+                    ltpcSourceBoard.setSourceBoardNum(c.getSourceBoardNum());
+                    ltpcSourceBoard.setLtpcChannels(new LinkedList<>());
+                    ltpcSourceBoard.getLtpcChannels().add(c);
+                    LtpcDetector.SourceBoardMap.put(c.getSourceBoardNum(),ltpcSourceBoard);
+                }
+            }
+        });
+        HashMap<Integer, LtpcSourceBoard> sourceBoardMap = LtpcDetector.SourceBoardMap;
+        for( Map.Entry<Integer, LtpcSourceBoard> entrySet :sourceBoardMap.entrySet()){
+            LtpcSourceBoard sourceBoard = entrySet.getValue();
+            LinkedList<LtpcChannel> boardChannels = sourceBoard.getLtpcChannels();
+                sourceBoard.setArea(boardChannels.get(0).getArea());
         }
         ltpcArea.addList(ltpcBoard);
         ltpcDetector=new LtpcDetector(listAeras, listBoards, listChannels);

@@ -3,9 +3,10 @@ package com.wy.display.config;
 import com.wy.Main;
 import com.wy.display.config.creatData.CreateData;
 import com.wy.display.config.readData.ReadData;
+import com.wy.display.config.readData.ScalaAnalyse;
 import com.wy.display.config.readXML.ReadConfig;
+import com.wy.display.statistics.StatisticsController;
 import com.wy.model.data.SimplifyData;
-import com.wy.model.decetor.LtpcChannel;
 import com.wy.model.decetor.LtpcDetector;
 import com.wy.display.detector.DetectorPaintController;
 import javafx.fxml.FXML;
@@ -20,7 +21,6 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import com.wy.model.data.DataSource;
-import javafx.util.Duration;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -88,21 +88,27 @@ public class ConfigController {
             String text = triggerCount.getText();
             if (!"".equals(text)) {
                 FileChooser fileChooser = FileChooseBuild();
-                fileChooser.setTitle("保存数据文件");
+                fileChooser.setTitle("Save File");
                 File file = fileChooser.showSaveDialog(new Stage());
                 CreateData createData = new CreateData(file, Integer.parseInt(text));
+
+                //bind bar
+                fileProgressBar.progressProperty().bind(createData.progressProperty());
+
+                ConfigLog.appendText("\nData Create Start：Path:"+file.getAbsolutePath());
+
                 createData.start();
                 createData.setOnSucceeded(event -> {
-                    ConfigLog.appendText("\n模拟数据创建成功。Path:"+file.getAbsolutePath());
+                    ConfigLog.appendText("\nData Create Succeed。Path:"+file.getAbsolutePath());
                 });
             }
             else {
-                ConfigLog.appendText("\n触发数目不能为空");
+                ConfigLog.appendText("\nTrigger Cannot be null");
             }
         }
         else {
             ConfigLog.setStyle("-fx-text-fill:red");
-            ConfigLog.appendText("\n请先配置参数文件");
+            ConfigLog.appendText("\nPlease Import ConfigFile");
         }
     }
     private void setIntegerFormatter(TextField t){
@@ -121,11 +127,12 @@ public class ConfigController {
     @FXML
     private void controlButtonAction() throws Exception {
         FileChooser fileChooser = FileChooseBuild();
-        fileChooser.setTitle("选择配置文件");
+        fileChooser.setTitle("Please Choose ConfigFile");
         File file = fileChooser.showOpenDialog(new Stage());
+//        File file =new File(Main.class.getResource("/detector.xlsx").getFile());
         if (file!=null) {
             ConfigLog.setStyle("-fx-text-fill:green");
-            ConfigLog.setText("---------初始化配置文件--------- \n Path: "+file.getAbsolutePath()+"\n\n");
+            ConfigLog.setText("---------Initial Detector Info--------- \n Path: "+file.getAbsolutePath()+"\n\n");
             ReadConfig.setDetectorByXlxs(file);
             ltpcDetector = ReadConfig.getLtpcDetector();
             String s = ltpcDetector.toString();
@@ -137,19 +144,28 @@ public class ConfigController {
         }
         else {
             ConfigLog.setStyle("-fx-text-fill:red");
-            ConfigLog.setText("\n请先配置参数文件");
+            ConfigLog.setText("\nPlease Import ConfigFile");
         }
     }
     @FXML
     private void imageAction(){
-        AnchorPane anchorPane = new AnchorPane();
+       VBox vBox = new VBox();
         ImageView imageView = new ImageView(Main.class.getResource("/DetectorInfo.png").toExternalForm());
-        anchorPane.getChildren().add(imageView);
+        String s = "整个探测器分为9个激光平面，1-3号平面为纵向平面，每个平面有上下各6条激光路径，4-9号平面为横向平面，每个" +
+                "平面各有一条激光路径，激光路径序号1-42，按平面循序递增，下图是第一个平面的激光路径序号，之后的平面路径序号以此类推";
+        TextArea textArea = new TextArea(s);
+        textArea.setFont(Font.font(20));
+        textArea.setStyle("-fx-border-color: red");
+        textArea.setStyle("-fx-text-fill: blueviolet");
+        textArea.setPrefWidth(vBox.getWidth());
+        textArea.setWrapText(true);
+        vBox.getChildren().addAll(textArea,imageView);
+
         Stage stage = new Stage();
-        stage.setTitle("参考图片");
+        stage.setTitle("Route Info");
         stage.setWidth(1300);
-        stage.setHeight(900);
-        stage.setScene(new Scene(anchorPane));
+        stage.setHeight(1000);
+        stage.setScene(new Scene(vBox));
         stage.show();
     }
     @FXML
@@ -157,24 +173,37 @@ public class ConfigController {
         if (isConfiged) {
             FileChooser fileChooser = FileChooseBuild();
             File file = fileChooser.showOpenDialog(new Stage());
-            DataInputStream dis = new DataInputStream(new FileInputStream(file));
+            if (file==null){
+                ConfigLog.setStyle("-fx-text-fill:red");
+                ConfigLog.appendText("\n\nNot choose file");
+            }
+            else {
+                ConfigLog.appendText("\n\n##################Start Analyse##################\n");
+                ConfigLog.setStyle("-fx-text-fill:mediumvioletred");
+                ConfigLog.appendText("Path:"+file.getAbsolutePath());
+                ConfigLog.setStyle("-fx-text-fill:red");
+                ConfigLog.appendText("\n*********Linked to Spark*********");
+                long start = System.currentTimeMillis();
+                ScalaAnalyse scalaAnalyse = new ScalaAnalyse("file:///"+file.getAbsolutePath(),"",fileProgressBar,ConfigLog);
+                scalaAnalyse.start();
 
-            ReadData readData = new ReadData(dis, file.getPath());
-            ReadData.setLtpcChannels((ArrayList<LtpcChannel>) ltpcDetector.getChannels());
-            fileProgressBar.progressProperty().bind(readData.progressProperty());
-            readData.start();
-
-            readData.setOnSucceeded(event -> {
-                dataSource = readData.getValue();
-                if (dataSource!=null){
-                    ConfigLog.setStyle("-fx-text-fill:blue");
-                    ConfigLog.appendText(dataSource.toString());
-                }
-                fileProgressBar.progressProperty().unbind();
-                fileProgressBar.setProgress(1);
-
-            });
-
+                scalaAnalyse.setOnSucceeded(event -> {
+                    this.dataSource = scalaAnalyse.getValue();
+                    if (this.dataSource !=null){
+                        ConfigLog.setStyle("-fx-text-fill:blue");
+                        long end = System.currentTimeMillis();
+                        long UseSeconds = (end - start) / 1000;
+                        ConfigLog.appendText("\nData Analyse Over,Use Time: "+UseSeconds+" s");
+                        ConfigLog.appendText("\n##################End Analyse##################\n");
+                        StatisticsController.setDataSource(this.dataSource);
+                        try {
+                            Main.showFileResult();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }
         }
         else {
             ConfigLog.setStyle("-fx-text-fill:red");
@@ -188,6 +217,10 @@ public class ConfigController {
                 new FileChooser.ExtensionFilter("Excel类型","*.xlsx"),
                 new FileChooser.ExtensionFilter("数据类型","*.bin")
         );
+        File file = new File("C:\\Users\\dgbtds\\Desktop\\LtpcExe\\MyApp");
+        if (file.exists()){
+            fileChooser.setInitialDirectory(file);
+        }
         return fileChooser;
     }
     @FXML
@@ -268,7 +301,7 @@ public class ConfigController {
         }
         DetectorPaintController.setTriggerNum(trigger);
         DetectorPaintController.setDataSource(dataSource);
-        ArrayList<SimplifyData> sdList = dataSource.getSdList();
+        ArrayList<SimplifyData> sdList = (ArrayList<SimplifyData>) dataSource.getSdList();
         Integer finalTrigger = trigger;
         Integer finalPlane = plane;
         Stream<SimplifyData> simplifyDataStream = sdList.stream()

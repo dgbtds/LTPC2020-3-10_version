@@ -1,17 +1,47 @@
 apply plugin: 'java'
 apply plugin: 'javafx-gradle-plugin'
+apply plugin: 'scala'
 group 'org.example'
 version '1.0-SNAPSHOT'
+sourceSets {
+    main {
+        scala {
+            srcDirs = ['src/main/scala','src/main/java']
+        }
+        java {
+            srcDirs = [ ]
+        }
+    }
+}
 
-
-compileJava.options.encoding = "UTF-8"   //这里避免中文乱码
-sourceCompatibility = 1.8
 repositories {
     mavenLocal()
     maven {
         url 'http://maven.aliyun.com/nexus/content/groups/public/'
     }
     mavenCentral()
+}
+ext {
+    scalaVersion = '2.11'
+    sparkVersion = '2.0.2'
+}
+dependencies {
+    compile('mysql:mysql-connector-java:5.1.48')
+
+    compile 'com.esotericsoftware:kryo-shaded:4.0.0'
+    compile 'commons-codec:commons-codec:1.10'
+
+
+    compile "org.apache.spark:spark-core_$scalaVersion:$sparkVersion"
+    compile "org.apache.spark:spark-sql_$scalaVersion:$sparkVersion"
+    compile  "org.apache.spark:spark-streaming_$scalaVersion:$sparkVersion"
+    compile "org.apache.spark:spark-streaming-kafka-0-10_$scalaVersion:$sparkVersion"
+
+
+
+    compile "org.scala-lang:scala-library:$scalaVersion"
+    compile 'org.apache.poi:poi:3.17'
+    compile 'org.apache.poi:poi-ooxml:3.17'
 }
 jar {
     manifest {
@@ -26,13 +56,10 @@ jar {
     }
 }
 
-dependencies {
-    compile 'org.apache.poi:poi:3.17'
-    compile 'org.apache.poi:poi-ooxml:3.17'
-
-    testCompile group: 'junit', name: 'junit', version: '4.12'
-}
 tasks.withType(JavaCompile) {
-        options.encoding = "UTF-8"
-    }
+    options.encoding = "UTF-8"
+}
+tasks.withType(ScalaCompile) {
+    options.encoding = "UTF-8"
+}
 

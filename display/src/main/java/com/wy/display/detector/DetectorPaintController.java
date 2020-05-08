@@ -8,8 +8,10 @@ package com.wy.display.detector;
 
 import com.wy.display.config.ConfigController;
 import com.wy.model.data.DataSource;
+import com.wy.model.data.Rectangle;
 import com.wy.model.data.SimplifyData;
 import com.wy.model.decetor.LtpcChannel;
+import com.wy.model.decetor.PlaneWithTrack;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Side;
@@ -21,7 +23,6 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Affine;
 import javafx.scene.transform.Rotate;
 import javafx.stage.Stage;
@@ -113,7 +114,13 @@ public class DetectorPaintController {
             rectangle.setStroke(Color.BLACK);
             rectangle.setStrokeWidth(0.3);
             rectangle.setStyle("-fx-stroke-type:outside");
-            Tooltip id = new Tooltip("ChannelNum : "+c.getPid());
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append("ChannelNum: " + c.getPid() + " ,Board: " + c.getSourceBoardNum() + " ,Tracker: ");
+            PlaneWithTrack[] planeWithTracks = c.getPlaneWithTracks();
+            for(PlaneWithTrack pwt:planeWithTracks){
+                stringBuilder.append(pwt.getTracker().trackerNum+" ");
+            }
+            Tooltip id = new Tooltip(stringBuilder.toString());
             Tooltip.install(rectangle,id);
             c.setRectangle(rectangle);
             detectorPane.getChildren().add(rectangle);
@@ -122,33 +129,72 @@ public class DetectorPaintController {
                 rectangle.setFill(Color.GRAY);;
             }
             else if (dataSource!=null){
-                Optional<SimplifyData> first = dataSource.getSdList().stream().filter(l -> l.getChannelNum() == c.getPid()).filter(l->l.getTriggerNum()==triggerNum).findFirst();
-                if ( first.get()!=null) {
+                Optional<SimplifyData> middle = dataSource.getSdList().stream().filter(l -> l.getChannelNum() == c.getPid()).filter(l->l.getTriggerNum()==triggerNum).findFirst();
+                middle.ifPresent(simplifyData -> {
+                    SimplifyData sd = middle.get();
+                    Optional<SimplifyData> right = dataSource.getSdList().stream()
+                            .filter(l -> l.getChannelNum() == c.getPid()-1).filter(l->l.getTriggerNum()==triggerNum).findFirst();
+                    Optional<SimplifyData> left = dataSource.getSdList().stream()
+                            .filter(l -> l.getChannelNum() == c.getPid()+1).filter(l->l.getTriggerNum()==triggerNum).findFirst();
                     rectangle.setOnMouseClicked(event -> {
-                        LineChart<Number, Number> waveChart = setWaveChart(first);
+                        Paint fill = rectangle.getFill();
+                        String middleColor = fill.toString();
+                        Rectangle rectR = rectangleMap.get(c.getPid() - 1);
+                        String rightColor = rectR.getFill().toString();
+                        Rectangle rectL = rectangleMap.get(c.getPid() + 1);
+                        String leftColor = rectL.getFill().toString();
+
+
+                        HBox hBox = new HBox();
+                        hBox.setSpacing(20);
+
+                        LineChart<Number, Number> waveChart1 = setWaveChart(middle,"#"+middleColor.substring(2,8));
+                        if (channels.get(c.getPid()-1).getCol()==sd.getLtpcChannel().getCol()){
+                            LineChart<Number, Number> waveChart0= setWaveChart(right,"#"+rightColor.substring(2,8));
+                            hBox.getChildren().add(waveChart0);
+                        }
+
+                        hBox.getChildren().add(waveChart1);
+
+                        if (channels.get(c.getPid()+1).getCol()==sd.getLtpcChannel().getCol()) {
+                            LineChart<Number, Number> waveChart2 = setWaveChart(left,"#"+leftColor.substring(2,8));
+                            hBox.getChildren().add(waveChart2);
+                        }
+
                         Stage stage = new Stage();
-                        stage.setScene(new Scene(waveChart));
-                        stage.setTitle(" 触发号: "+triggerNum+" ,通道: "+first.get().getChannelNum()+" 的采样数据波形图");
+                        stage.setScene(new Scene(hBox));
+                        stage.setTitle(" 触发号: "+triggerNum+" ,通道: "+middle.get().getChannelNum()+" 的采样数据波形图");
                         stage.show();
                     });
-                }
+                });
             }
         });
         if (isFilled&&dataSource!=null&&sdList!=null){
             fillRect();
         }
     }
-    private LineChart<Number, Number> setWaveChart( Optional<SimplifyData> first){
+    private LineChart<Number, Number> setWaveChart( Optional<SimplifyData> first,String color){
         NumberAxis X = new NumberAxis(0,300,1);
         X.setLabel("Time/25ns");
         NumberAxis Y = new NumberAxis(0,dataSource.getChargeMax(),20);
         Y.setLabel("charge");
         LineChart<Number, Number> wave = new LineChart<Number, Number>(X,Y);
-        SimplifyData simplifyData = first.get();
-        short[] shorts = simplifyData.getShorts();
+        wave.setStyle("CHART_COLOR_1: "+color+" ;");
+
+        short[] shorts;
         XYChart.Series<Number, Number> waveData = new XYChart.Series<>();
+
+        if  (first.isPresent()) {
+            SimplifyData simplifyData = first.get();
+            shorts= simplifyData.getShorts();
+            waveData.setName(simplifyData.getChannelNum()+"");
+        }
+        else {
+            shorts=new short[300];
+            waveData.setName("No Clicked");
+        }
         for(int i=0;i<shorts.length;i++){
-            waveData.getData().add(new XYChart.Data<Number, Number>(i,shorts[i]));
+            waveData.getData().add(new XYChart.Data<>(i,shorts[i]));
         }
         wave.getData().add(waveData);
         return wave;
@@ -241,8 +287,8 @@ public class DetectorPaintController {
     public static void fillReset(){
         channels.forEach(c->{
             if (c.getSourceBoardNum()!=0){
-            Rectangle rectangle = c.getRectangle();
-            rectangle.setFill(Color.WHITE);
+                Rectangle rectangle = c.getRectangle();
+                rectangle.setFill(Color.WHITE);
             }
         });
     }
