@@ -15,7 +15,7 @@
       <children>
         <TextField id="Trigger" fx:id="triggerNum" prefHeight="52.0" prefWidth="151.0" promptText="Trigger" />
         <TextField id="Trigger" fx:id="planeNum" prefHeight="52.0" prefWidth="158.0" promptText="Plane" />
-        <TextField id="Trigger" fx:id="trackerNum" prefHeight="52.0" prefWidth="152.0" promptText="Lyser" />
+        <TextField id="Trigger" fx:id="trackerNum" prefHeight="52.0" prefWidth="152.0" promptText="Tracker" text="" />
         <TextField id="Trigger" fx:id="channelNum" prefHeight="52.0" prefWidth="168.0" promptText="ChannelNum" />
         <Button fx:id="image" mnemonicParsing="false" onAction="#imageAction" prefHeight="54.0" prefWidth="142.0" text="Info">
           <font>

@@ -1,18 +1,22 @@
 package scala.sumit
 
+import java.io.{BufferedOutputStream, File, FileOutputStream, RandomAccessFile}
+import java.nio.channels.FileChannel.MapMode
 import java.util
 import java.util.Properties
 
+import com.wy.Utils.KryoUtil
 import com.wy.display.config.readXML.ReadConfig
 import com.wy.model.data.{DataSource, SimplifyData}
 import com.wy.model.decetor.{LtpcChannel, LtpcDetector}
 import javafx.scene.control.{ProgressBar, TextArea}
 import listerner.SparkJobListener
+import org.apache.commons.codec.binary.Base64
 import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{SaveMode, SparkSession}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -34,25 +38,38 @@ object LocalSubmitApp {
 		SparkSession.clearDefaultSession()
 		val spark=SparkSession.builder().config(conf).getOrCreate()
 
-				val dataSource =  AnalyseData.MainJob(spark, "file:///D:\\bigdata\\sparkSql\\parquet\\test2", 1)
+		val dataSource =  AnalyseData.MainJob(spark, "file:///D:\\bigdata\\sparkSql\\parquet\\test2", 1)
 		SparkSession.clearDefaultSession()
 		spark.sparkContext.stop()
 	}
 
 	def analyseData(localFile:String,out_file:String,fileProgressBar: ProgressBar, ConfigLog: TextArea):DataSource={
-		val AppName = "analyseData"
-		val master = "local[*]"
-		//sparkContext
-		val spark=SparkSession.builder().master(master).appName(AppName).getOrCreate()
-		spark.sparkContext.addSparkListener(new SparkJobListener(6,fileProgressBar,ConfigLog))
+		ConfigLog.setStyle("-fx-text-fill:blue")
+		ConfigLog.appendText("\n*********Search From History Record*********")
+		AnalyseData.read4fileIfexist(localFile)  match {
+			case Some(dataSource) => dataSource
+			case None=>{
+				ConfigLog.setStyle("-fx-text-fill:red")
+				ConfigLog.appendText("\n*********History Record Not Exists*********")
+				ConfigLog.appendText("\n*********Start Spark Analyse*********")
+				ConfigLog.appendText("\n*********Linked to Spark*********")
+				val AppName = "analyseData"
+				val master = "local[*]"
+				//sparkContext
+				val spark=SparkSession.builder().master(master).appName(AppName).getOrCreate()
+				spark.sparkContext.addSparkListener(new SparkJobListener(6,fileProgressBar,ConfigLog))
 
-		val dataSource =  AnalyseData.MainJob(spark, localFile, 1)
-		spark.sparkContext.stop()
-		dataSource
+				val dataSource =  AnalyseData.MainJob(spark, localFile, 1)
+				spark.sparkContext.stop()
+				dataSource
+			}
+		}
+
 	}
 
 }
 object AnalyseData{
+	var isSerializable = false
 	case class mysqlData( var ltpcChannel: LtpcChannel, var triggerNum: Int, var planeNum: Int ,
 												var trackerNum: Int , var channelNum: Int , var charge: Int , var shorts: Array[Short] ){
 	}
@@ -65,7 +82,7 @@ object AnalyseData{
 		val triggerNum = s.getTriggerNum
 		val planeNum = s.getPlaneNum
 		val trackerNum = s.getTrackerNum
-		val channelNum = s.getChannelNum
+		val channelNum = s.getPID
 		val charge = s.getCharge
 		val shorts = s.getShorts
 		mysqlData(ltpcChannel,triggerNum,planeNum,trackerNum,channelNum,charge,shorts )
@@ -77,22 +94,16 @@ object AnalyseData{
 	val timemap = new util.HashMap[Integer, java.lang.Long]()
 
 
-	def MainJob( spark:SparkSession,filePath:String,minPartitions:Int):DataSource= {
-				setChannelMap()
-//		val maybeFrame = readDF4Purquet(spark, filePath)
-//		maybeFrame match {
-//			case Some(caseClassDF) =>{
-//			}
-//			case None =>rddAnalyse(spark,filePath,minPartitions)
-//		}
-//		new DataSource
-		rddAnalyse(spark,filePath,minPartitions)
+	def MainJob( spark:SparkSession,datafilePath:String,minPartitions:Int):DataSource= {
+		setChannelMap()
+		rddAnalyse(spark,datafilePath,minPartitions)
 	}
 
-	def rddAnalyse(spark:SparkSession,filePath:String,minPartitions:Int):DataSource={
+	def rddAnalyse(spark:SparkSession,datafilePath:String,minPartitions:Int):DataSource={
+		val datafilePath0= "file:///" +datafilePath
 		val sc = spark.sparkContext
 		sc.hadoopConfiguration.set("textinputformat.record.delimiter", new String(StringUtil.intToByteArray(0x1a2b3c4d), "ISO-8859-1"))
-		val rdd = sc.newAPIHadoopFile(filePath, classOf[TextInputFormat],classOf[LongWritable], classOf[Text])
+		val rdd = sc.newAPIHadoopFile(datafilePath0, classOf[TextInputFormat],classOf[LongWritable], classOf[Text])
 		val rawDataPckcount = rdd.count()
 		val rdd2 = rdd.map(
 			pair => new String(pair._2.getBytes, 0, pair._2.getLength, "ISO-8859-1").getBytes("ISO-8859-1"))
@@ -111,41 +122,64 @@ object AnalyseData{
 		countMap.foreach(k=>{
 			hashmap.put(k._1,k._2)
 		})
-
 		val rdd4 =rdd3.flatMap(arr => {processSimpleData(arr)})
 		val sfdList = rdd4.collect().toList
 		val dataSource = new DataSource
 		setChargeLimit(sfdList)
-		dataSource.setFilePath(filePath)
+		dataSource.setFilePath(datafilePath)
 		dataSource.setRawDataPackageCount(rawDataPckcount.toInt)
 		dataSource.setTriggerCount(timemap.size())
 		dataSource.setEveryTriggerPckCount(hashmap)
+
 		dataSource.setSdList(sfdList.asJava)
 		dataSource.setChargeMax(chargeMax)
 		dataSource.setChargeMin(chargeMin)
 		dataSource.setEveryTriggerTime(timemap)
 		dataSource.setAllPackageCount(sfdList.size)
 		setBoardClick()
-
-//		//Kryo
-//		val bytes = KryoUtil.writeObjectToByteArray(dataSource)
-//		val fis = new FileInputStream("D:\\bigdata\\sparkSql\\kryo\\test.dat")
-//		fis.read(bytes)
-//		fis.close()
-
+		if (isSerializable){
+		save2file(dataSource, datafilePath)
+		}
 		dataSource
 	}
-
-	def readDF4Purquet(spark:SparkSession,Path:String): Option[DataFrame] ={
-		var DF=None:Option[DataFrame]
-		try {
-			DF = Some(spark.sqlContext.read.parquet(Path))
-		} catch {
-			case e:AnalysisException =>
-			case e:Exception=>e.printStackTrace()
-		}
-		DF
+	def save2file(dataSource:DataSource,datafilePath:String): Unit ={
+		val bytes = KryoUtil.serializationObject(dataSource)
+		val savefilePath = getSaveFilePath(datafilePath)
+		val bos = new BufferedOutputStream(
+			new FileOutputStream(savefilePath));
+		bos.write(bytes)
+		bos.close()
 	}
+	private def getSaveFilePath(datafilePath:String): String ={
+		val file = new File(datafilePath)
+		val saveName = file.getName+"_"+Base64.encodeBase64String(datafilePath.getBytes())
+		val dictory = new File(file.getParent + "\\kryoSerializable")
+		if(!dictory.exists()){
+			dictory.mkdir()
+		}
+		val savefilePath = s"${dictory}\\${saveName}.dat"
+		savefilePath
+	}
+	def read4fileIfexist(datafilePath:String): Option[DataSource] ={
+		val savefilePath = getSaveFilePath(datafilePath)
+		val file = new File(savefilePath)
+		if(file.exists()&&isSerializable){
+			//Kryo
+			val fc = new RandomAccessFile(file, "r").getChannel
+			val byteBuffer = fc.map(MapMode.READ_ONLY, 0, fc.size).load
+			System.out.println(byteBuffer.isLoaded)
+			val bytes = new Array[Byte](fc.size().toInt)
+			if (byteBuffer.remaining > 0) {
+				byteBuffer.get(bytes, 0, byteBuffer.remaining)
+			}
+			val datasource = KryoUtil.deserializationObject(bytes,classOf[DataSource])
+			Some(datasource)
+		}
+		else {
+			None
+		}
+	}
+
 	def saveRdd2Mysql(spark:SparkSession,rdd: RDD[SimplifyData],tableName:String): Unit ={
 		val prop = new Properties()
 		prop.load(getClass.getResourceAsStream("/mysql.properties"))
@@ -217,6 +251,7 @@ object AnalyseData{
 					sd.setTriggerNum((arr(20)&0xff)<<8|(arr(21)&0xff))
 					sd.setTrackerNum(planeWithTracks(i).getTracker.trackerNum)
 					sd.setCharge(dataPoints(max).toInt)
+					sd.setPID(ltpcChannel.getPid)
 					sd.setPlaneNum(planeWithTracks(i).getPlane.planeNum)
 					if (sd.getTriggerNum<=3)
 						sd.setShorts(dataPoints)

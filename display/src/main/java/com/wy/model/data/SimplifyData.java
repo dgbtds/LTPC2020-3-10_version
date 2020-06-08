@@ -6,7 +6,6 @@ package com.wy.model.data;/**
  */
 
 import com.wy.model.decetor.LtpcChannel;
-import javafx.scene.shape.Rectangle;
 import scala.Serializable;
 
 /**
@@ -23,7 +22,7 @@ public class SimplifyData implements Serializable {
     private int triggerNum;
     private int planeNum;
     private int trackerNum;
-    private int channelNum;
+    private int PID;
     private int charge;
     private short[] shorts;
 
@@ -67,12 +66,12 @@ public class SimplifyData implements Serializable {
         this.trackerNum = trackerNum;
     }
 
-    public int getChannelNum() {
-        return channelNum;
+    public int getPID() {
+        return PID;
     }
 
-    public void setChannelNum(int channelNum) {
-        this.channelNum = channelNum;
+    public void setPID(int PID) {
+        this.PID = PID;
     }
 
     public int getCharge() {
@@ -84,6 +83,6 @@ public class SimplifyData implements Serializable {
     }
     @Override
     public String toString(){
-        return " 触发号： "+triggerNum+" 平面序号 : "+planeNum+" 激光路径 ： "+trackerNum+" ,通道号 ： "+""+channelNum+" ,电荷强度 ： "+charge+"\n";
+        return " 触发号： "+triggerNum+" 平面序号 : "+planeNum+" 激光路径 ： "+trackerNum+" ,PID ： "+""+ PID +" ,电荷强度 ： "+charge+"\n";
     }
 }

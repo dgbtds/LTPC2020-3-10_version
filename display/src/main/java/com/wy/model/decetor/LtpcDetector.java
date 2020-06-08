@@ -11,6 +11,7 @@ public class LtpcDetector implements Serializable {
 	private List<LtpcArea>areas;
 	private List<LtpcBoard>boards;
 	private List<LtpcChannel>channels;
+	private static HashMap<Integer,LtpcChannel>pidChannelMap=new HashMap<>(1500);
 
 	public List<LtpcArea> getAreas() {
 		return areas;
@@ -38,6 +39,9 @@ public class LtpcDetector implements Serializable {
 		this.areas = areas;
 		this.boards = boards;
 		this.channels = channels;
+		channels.forEach(channel->{
+			pidChannelMap.put(channel.getPid(),channel);
+		});
 	}
 
 	@Override
@@ -62,4 +66,11 @@ public class LtpcDetector implements Serializable {
 		return stringBuilder.toString();
 	}
 
+	public static HashMap<Integer, LtpcChannel> getPidChannelMap() {
+		return pidChannelMap;
+	}
+
+	public static void setPidChannelMap(HashMap<Integer, LtpcChannel> pidChannelMap) {
+		LtpcDetector.pidChannelMap = pidChannelMap;
+	}
 }

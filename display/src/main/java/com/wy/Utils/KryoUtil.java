@@ -8,10 +8,14 @@ package com.wy.Utils;/**
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.CollectionSerializer;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import org.apache.commons.codec.binary.Base64;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @program: LTPC2020-3-10_version
@@ -172,12 +176,13 @@ public class KryoUtil {
     /**
      * 将字节数组反序列化为原对象
      *
-     * @param byteArray writeToByteArray 方法序列化后的字节数组
+     * @param obj writeToByteArray 方法序列化后的字节数组
      * @param clazz     原对象的 Class
      * @param <T>       原对象的类型
      * @return 原对象
      */
-    public static <T> T readObjectFromByteArray(byte[] byteArray, Class<T> clazz) {
+    public static <T> T readObjectFromByteArray(Object obj, Class<T> clazz) {
+        byte[] byteArray = (byte[]) obj;
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArray);
         Input input = new Input(byteArrayInputStream);
 
@@ -200,6 +205,101 @@ public class KryoUtil {
         } catch (UnsupportedEncodingException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @SuppressWarnings("all")
+    public static <T extends Serializable> byte[]  serializationList(List<T> obj, Class<T> clazz) {
+        Kryo kryo = new Kryo();
+        kryo.setReferences(false);
+        kryo.setRegistrationRequired(true);
+
+        CollectionSerializer serializer = new CollectionSerializer();
+        serializer.setElementClass(clazz, new JavaSerializer());
+        serializer.setElementsCanBeNull(false);
+
+        kryo.register(clazz, new JavaSerializer());
+        kryo.register(ArrayList.class, serializer);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Output output = new Output(baos);
+        kryo.writeObject(output, obj);
+        output.flush();
+        output.close();
+
+        byte[] bytes = baos.toByteArray();
+        try {
+            baos.flush();
+            baos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return bytes;
+    }
+
+    @SuppressWarnings("all")
+    public static <T extends Serializable> List<T> deserializationList(Object obj, Class<T> clazz) {
+        byte[] bytes = (byte[]) obj;
+        Kryo kryo = new Kryo();
+        kryo.setReferences(false);
+        kryo.setRegistrationRequired(true);
+
+        CollectionSerializer serializer = new CollectionSerializer();
+        serializer.setElementClass(clazz, new JavaSerializer());
+        serializer.setElementsCanBeNull(false);
+
+        kryo.register(clazz, new JavaSerializer());
+        kryo.register(ArrayList.class, serializer);
+
+        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+        Input input = new Input(bais);
+        return (List<T>) kryo.readObject(input, ArrayList.class, serializer);
+    }
+
+    /**
+     * 序列化对象
+     *
+     * @param obj
+     * @return
+     */
+    @SuppressWarnings("all")
+    public static <T extends Serializable> byte[] serializationObject(T obj) {
+
+        Kryo kryo = new Kryo();
+        kryo.setReferences(false);
+        kryo.register(obj.getClass(), new JavaSerializer());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Output output = new Output(baos);
+        kryo.writeClassAndObject(output, obj);
+        output.flush();
+        output.close();
+        byte[] b = baos.toByteArray();
+        try {
+            baos.flush();
+            baos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return b;
+    }
+
+    /**
+     * 反序列化
+     *
+     * @param obj
+     * @param clazz
+     * @return
+     */
+    @SuppressWarnings("all")
+    public static <T extends Serializable> T deserializationObject(Object obj, Class<T> clazz) {
+        byte[] bytes = (byte[]) obj;
+        Kryo kryo = new Kryo();
+        kryo.setReferences(false);
+        kryo.register(clazz, new JavaSerializer());
+
+        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+        Input input = new Input(bais);
+        return (T) kryo.readClassAndObject(input);
     }
 
 }

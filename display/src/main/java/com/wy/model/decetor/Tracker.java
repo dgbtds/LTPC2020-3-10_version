@@ -95,4 +95,13 @@ public class Tracker implements Serializable {
         this.trackerNum= trackerNum;
         this.cluster= cluster;
     }
+    public static String getInfo(){
+        StringBuilder s=new StringBuilder();
+        s.append("平面: 1    ; 径迹编号: 1,2,3,4,5,6,7,8,9,10,11,12 \n");
+        s.append("平面: 2    ; 径迹编号: 13,14,15,16,17,18,19,20,21,22,23,24 \n");
+        s.append("平面: 3    ; 径迹编号: 25,26,27,28,29,30,31,32,33,34,35,36 \n");
+        s.append("平面: 4# 5# 6# 7# 8# 9  ; 径迹编号: 37# 38# 39# 40# 41# 42 ");
+        return s.toString();
+    }
+
 }

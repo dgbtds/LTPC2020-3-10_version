@@ -18,7 +18,6 @@ import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import com.wy.model.data.DataSource;
 import com.wy.model.data.TimeReference;
-import javafx.scene.media.VideoTrack;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -221,7 +220,7 @@ public class ReadData extends Service<DataSource> implements Runtime {
             int max = findMax(shorts, start, start+Size*(i+1));
             SimplifyData sd = new SimplifyData();
             sd.setLtpcChannel(ltpcChannel);
-            sd.setChannelNum(channelNum);
+            sd.setPID(channelNum);
             sd.setTriggerNum(simpleData.getTriggerNumber());
             sd.setTrackerNum(planeWithTracks[i].getTracker().trackerNum);
             sd.setCharge((int) shorts[max]);
