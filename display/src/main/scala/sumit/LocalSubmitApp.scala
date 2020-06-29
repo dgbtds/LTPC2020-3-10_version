@@ -1,22 +1,18 @@
 package scala.sumit
 
-import java.io.{BufferedOutputStream, File, FileOutputStream, RandomAccessFile}
-import java.nio.channels.FileChannel.MapMode
-import java.util
-import java.util.Properties
+import java.io.File
 
-import com.wy.Utils.KryoUtil
+import com.wy.Main
 import com.wy.display.config.readXML.ReadConfig
-import com.wy.model.data.{DataSource, SimplifyData}
+import com.wy.model.data.DataSource
 import com.wy.model.decetor.{LtpcChannel, LtpcDetector}
+import hbaseControl.{TrackerMap, hbasetest}
 import javafx.scene.control.{ProgressBar, TextArea}
 import listerner.SparkJobListener
-import org.apache.commons.codec.binary.Base64
 import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 import org.apache.spark.SparkConf
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.apache.spark.sql.SparkSession
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -32,238 +28,183 @@ object LocalSubmitApp {
 	def main(args: Array[String]): Unit = {
 		val conf = new SparkConf()
 			.setAppName("analyseData2")
-			.set("spark.sql.shuffle.partitions", "2001")
 			.setMaster("local[*]")
 
 		SparkSession.clearDefaultSession()
-		val spark=SparkSession.builder().config(conf).getOrCreate()
-
-		val dataSource =  AnalyseData.MainJob(spark, "file:///D:\\bigdata\\sparkSql\\parquet\\test2", 1)
-		SparkSession.clearDefaultSession()
+		val spark = SparkSession.builder().config(conf).getOrCreate()
+		ReadConfig.setDetectorByXlxs(new File(classOf[Main].getResource("/detector.xlsx").getPath))
+		val dataSource = AnalyseData.MainJob(spark, "C:\\Users\\dgbtds\\Desktop\\LtpcExe\\MyApp\\", "3wy", 1)
 		spark.sparkContext.stop()
 	}
 
-	def analyseData(localFile:String,out_file:String,fileProgressBar: ProgressBar, ConfigLog: TextArea):DataSource={
+	def analyseData(Dictory: String, sourceDataName: String, fileProgressBar: ProgressBar, ConfigLog: TextArea): DataSource = {
 		ConfigLog.setStyle("-fx-text-fill:blue")
-		ConfigLog.appendText("\n*********Search From History Record*********")
-		AnalyseData.read4fileIfexist(localFile)  match {
-			case Some(dataSource) => dataSource
-			case None=>{
-				ConfigLog.setStyle("-fx-text-fill:red")
-				ConfigLog.appendText("\n*********History Record Not Exists*********")
-				ConfigLog.appendText("\n*********Start Spark Analyse*********")
-				ConfigLog.appendText("\n*********Linked to Spark*********")
-				val AppName = "analyseData"
-				val master = "local[*]"
-				//sparkContext
-				val spark=SparkSession.builder().master(master).appName(AppName).getOrCreate()
-				spark.sparkContext.addSparkListener(new SparkJobListener(6,fileProgressBar,ConfigLog))
+		ConfigLog.setStyle("-fx-text-fill:red")
+		ConfigLog.appendText("\n*********Start Spark Analyse*********")
+		ConfigLog.appendText("\n*********Linked to Spark*********")
+		val AppName = "analyseData"
+		val master = "local[*]"
+		//sparkContext
+		val spark = SparkSession.builder().master(master).appName(AppName).getOrCreate()
+		spark.sparkContext.addSparkListener(new SparkJobListener(6, fileProgressBar, ConfigLog))
 
-				val dataSource =  AnalyseData.MainJob(spark, localFile, 1)
-				spark.sparkContext.stop()
-				dataSource
-			}
-		}
-
+		val dataSource = AnalyseData.MainJob(spark, Dictory, sourceDataName, 1)
+		spark.sparkContext.stop()
+		dataSource
 	}
+
 
 }
-object AnalyseData{
-	var isSerializable = false
-	case class mysqlData( var ltpcChannel: LtpcChannel, var triggerNum: Int, var planeNum: Int ,
-												var trackerNum: Int , var channelNum: Int , var charge: Int , var shorts: Array[Short] ){
+
+object AnalyseData {
+	val tablename = "LtpcDataBase"
+	val ChannelMap = mutable.HashMap[(Int, Int), LtpcChannel]()
+	var trigger_chargeMax = mutable.HashMap[Int, Int]()
+	var trigger_chargeMin = mutable.HashMap[Int, Int]()
+	var countMap:Option[Map[Int,Int]] = None
+	var cliclMap:Option[mutable.HashMap[(Int, Int), Int]] = None
+
+	case class dataSource(var filePath: String, var allPackageCount: Int, var rawDataPackageCount: Int,
+												var triggerCount: Int, var everyTriggerPckCount: Map[Int, Int])
+
+	def MainJob(spark: SparkSession, Dictory: String, sourceDataName: String, minPartitions: Int): DataSource = {
+		cliclMap = Some(setChannelMap())
+		rddAnalyse(spark, Dictory, sourceDataName, minPartitions)
 	}
-	case class dataSource( var filePath: String ,var allPackageCount: Int , var rawDataPackageCount: Int ,
-	 var triggerCount: Int , var everyTriggerPckCount: Map[Integer, Integer] , var everyTriggerTime: Map[Integer, Long] ,
-	 var sdList: List[SimplifyData] , var chargeMax: Int , var chargeMin: Int )
-
-	def cloneFromSimplifyData(s:SimplifyData): mysqlData ={
-		val ltpcChannel = s.getLtpcChannel
-		val triggerNum = s.getTriggerNum
-		val planeNum = s.getPlaneNum
-		val trackerNum = s.getTrackerNum
-		val channelNum = s.getPID
-		val charge = s.getCharge
-		val shorts = s.getShorts
-		mysqlData(ltpcChannel,triggerNum,planeNum,trackerNum,channelNum,charge,shorts )
-	}
-	val ChannelMap=mutable.HashMap[(Integer,Integer), LtpcChannel]()
-	var chargeMax = 0
-	var chargeMin = Integer.MAX_VALUE
-	val hashmap = new util.HashMap[Integer, Integer]()
-	val timemap = new util.HashMap[Integer, java.lang.Long]()
-
-
-	def MainJob( spark:SparkSession,datafilePath:String,minPartitions:Int):DataSource= {
-		setChannelMap()
-		rddAnalyse(spark,datafilePath,minPartitions)
+	def countMap2String(): String ={
+		val builder = new StringBuilder()
+		countMap.get.foreach(
+			kv=>{
+				builder++=("    Trigger: " + kv._1 + " , packageCount: " + kv._2 + "\n")
+			}
+		)
+		builder.toString()
 	}
 
-	def rddAnalyse(spark:SparkSession,datafilePath:String,minPartitions:Int):DataSource={
-		val datafilePath0= "file:///" +datafilePath
-		val sc = spark.sparkContext
-		sc.hadoopConfiguration.set("textinputformat.record.delimiter", new String(StringUtil.intToByteArray(0x1a2b3c4d), "ISO-8859-1"))
-		val rdd = sc.newAPIHadoopFile(datafilePath0, classOf[TextInputFormat],classOf[LongWritable], classOf[Text])
-		val rawDataPckcount = rdd.count()
-		val rdd2 = rdd.map(
-			pair => new String(pair._2.getBytes, 0, pair._2.getLength, "ISO-8859-1").getBytes("ISO-8859-1"))
-		val timeMap=rdd2.filter(
-			arr =>(arr(12) & 0xff) >> 6 == 3).
-			map(arr =>((
-				arr(14) & 0xff) << 8 | (arr(15) & 0xff)
-				, (arr(22) & 0xff) << 40 | (arr(23) & 0xff)<<32| (arr(24) & 0xff)<<24| (arr(25) & 0xff)<<16| (arr(26) & 0xff)<<8| (arr(27) & 0xff)))
-			.sortByKey(true).collect().toMap
-		timeMap.foreach(k=>{
-			timemap.put(k._1,k._2)
-		})
-		val rdd3= rdd2.filter(arr => (arr(12) & 0xff) >> 6 == 2)
-		val countMap = rdd3.map(arr => ((arr(20) & 0xff) << 8 | (arr(21) & 0xff), 1)).reduceByKey(_ + _)
-			.sortByKey(true).collect().toMap
-		countMap.foreach(k=>{
-			hashmap.put(k._1,k._2)
-		})
-		val rdd4 =rdd3.flatMap(arr => {processSimpleData(arr)})
-		val sfdList = rdd4.collect().toList
+	def rddAnalyse(spark: SparkSession, Dictory: String, sourceDataName: String, minPartitions: Int): DataSource = {
 		val dataSource = new DataSource
-		setChargeLimit(sfdList)
-		dataSource.setFilePath(datafilePath)
-		dataSource.setRawDataPackageCount(rawDataPckcount.toInt)
-		dataSource.setTriggerCount(timemap.size())
-		dataSource.setEveryTriggerPckCount(hashmap)
+		if (hbasetest.notExist(tablename,Dictory +File.separator+ sourceDataName)) {
+				val datafilePath = "file:///" + Dictory +File.separator+ sourceDataName
+				val board_channelId_trackers = TrackerMap.trackers_From_board(spark)
+				val sc = spark.sparkContext
+				sc.hadoopConfiguration.set("textinputformat.record.delimiter", new String(StringUtil.intToByteArray(0x1a2b3c4d), "ISO-8859-1"))
+				val rdd = sc.newAPIHadoopFile(datafilePath, classOf[TextInputFormat], classOf[LongWritable], classOf[Text])
+				val rawDataPckcount = rdd.count()
+				val rdd2 = rdd.map(
+					pair => new String(pair._2.getBytes, 0, pair._2.getLength, "ISO-8859-1").getBytes("ISO-8859-1"))
+				val timeMap = rdd2.filter(
+					arr => (arr(12) & 0xff) >> 6 == 3).
+					map(arr => ((
+						arr(14) & 0xff) << 8 | (arr(15) & 0xff),
+						(((arr(22) & 0xff) << 16 | (arr(23) & 0xff) << 8), (arr(24) & 0xff) << 24 | (arr(25) & 0xff) << 16 | (arr(26) & 0xff) << 8 | (arr(27) & 0xff))))
+					.map(s => s).collect().toMap
+				val rdd3 = rdd2.filter(arr => (arr(12) & 0xff) >> 6 == 2)
 
-		dataSource.setSdList(sfdList.asJava)
-		dataSource.setChargeMax(chargeMax)
-		dataSource.setChargeMin(chargeMin)
-		dataSource.setEveryTriggerTime(timemap)
-		dataSource.setAllPackageCount(sfdList.size)
-		setBoardClick()
-		if (isSerializable){
-		save2file(dataSource, datafilePath)
+					//save 2 hbase
+					val outRdd = rdd3.flatMap(arr => {
+						splitData(arr, board_channelId_trackers)
+					})
+					hbasetest.HbaseWriteLtpc(tablename, outRdd, timeMap, sourceDataName,
+						trigger_chargeMax, trigger_chargeMin)
+				setBoardClick()
+
+				countMap = Some(outRdd.map(arr => (arr(0), 1)).sortByKey().reduceByKey(_ + _).collect().toMap)
+
+				dataSource.setFilePath(Dictory + sourceDataName)
+				dataSource.setRawDataPackageCount(rawDataPckcount.toInt)
+				dataSource.setTriggerCount(timeMap.size)
+				dataSource.setAllPackageCount(outRdd.count())
+				dataSource.setTrigger_pckCount(countMap2String())
 		}
 		dataSource
 	}
-	def save2file(dataSource:DataSource,datafilePath:String): Unit ={
-		val bytes = KryoUtil.serializationObject(dataSource)
-		val savefilePath = getSaveFilePath(datafilePath)
-		val bos = new BufferedOutputStream(
-			new FileOutputStream(savefilePath));
-		bos.write(bytes)
-		bos.close()
-	}
-	private def getSaveFilePath(datafilePath:String): String ={
-		val file = new File(datafilePath)
-		val saveName = file.getName+"_"+Base64.encodeBase64String(datafilePath.getBytes())
-		val dictory = new File(file.getParent + "\\kryoSerializable")
-		if(!dictory.exists()){
-			dictory.mkdir()
-		}
-		val savefilePath = s"${dictory}\\${saveName}.dat"
-		savefilePath
-	}
-	def read4fileIfexist(datafilePath:String): Option[DataSource] ={
-		val savefilePath = getSaveFilePath(datafilePath)
-		val file = new File(savefilePath)
-		if(file.exists()&&isSerializable){
-			//Kryo
-			val fc = new RandomAccessFile(file, "r").getChannel
-			val byteBuffer = fc.map(MapMode.READ_ONLY, 0, fc.size).load
-			System.out.println(byteBuffer.isLoaded)
-			val bytes = new Array[Byte](fc.size().toInt)
-			if (byteBuffer.remaining > 0) {
-				byteBuffer.get(bytes, 0, byteBuffer.remaining)
-			}
-			val datasource = KryoUtil.deserializationObject(bytes,classOf[DataSource])
-			Some(datasource)
-		}
-		else {
-			None
-		}
-	}
 
-	def saveRdd2Mysql(spark:SparkSession,rdd: RDD[SimplifyData],tableName:String): Unit ={
-		val prop = new Properties()
-		prop.load(getClass.getResourceAsStream("/mysql.properties"))
-		import spark.implicits._
-		val caseClassDF =rdd.map(simplifyData=>cloneFromSimplifyData(simplifyData)).toDF()
-		caseClassDF.write.mode(SaveMode.Append).jdbc(prop.getProperty("url"),tableName,prop)
-	}
-	private def setChargeLimit(sfdList: List[SimplifyData]): Unit ={
-		sfdList.foreach(s=>{
-			val charge = s.getCharge
-			if (charge> chargeMax) chargeMax = charge
-			if (charge < chargeMin) chargeMin = charge
-		})
-	}
 	private def setBoardClick(): Unit = {
 		val map = LtpcDetector.SourceBoardMap.asScala
 		map.foreach(k => {
-			val sum = k._2.getLtpcChannels.asScala.map(l=>l.getClickCount).sum
+			val sum = k._2.getLtpcChannels.asScala.map(l => l.getClickCount).sum
 			k._2.setClickCount(sum)
 		})
+
 	}
-	def setChannelMap(): Unit ={
+
+	def setChannelMap(): mutable.HashMap[(Int, Int), Int] = {
 		val channels = ReadConfig.getLtpcDetector.getChannels.asScala
-		channels.foreach(c=>{
-			ChannelMap.put((c.getSourceBoardNum,c.getChannelId),c)
+		val map = new mutable.HashMap[(Int, Int), Int]()
+		channels.foreach(c => {
+			ChannelMap.put((c.getSourceBoardNum, c.getChannelId), c)
+			map.put((c.getSourceBoardNum, c.getChannelId), 0)
 		})
+		map
 	}
 
-	def findMax(dataPoints: Array[Short], start: Int,end: Int) = {
-		var MIndex = start
-		for (i <- start + 1 until end) {
-			if (dataPoints(i) > dataPoints(MIndex)) MIndex = i
+	def splitData(arr: Array[Byte], BC_trackers: Map[(Int, Int), Array[Int]]): Array[Array[Int]] = {
+		val trigger = (arr(20) & 0xff) << 8 | (arr(21) & 0xff)
+		val channelId = arr(12) & 0x3f
+		val SourceBoardNum = arr(9) & 0xff
+		val time_left = (arr(22) & 0xff) << 8 | (arr(23) & 0xff)
+		val time_right = (arr(24) & 0xff) << 24 | (arr(25) & 0xff) << 16 | (arr(26) & 0xff) << 8 | (arr(27) & 0xff)
+		if (ChannelMap.contains((SourceBoardNum, channelId))) {
+			ChannelMap((SourceBoardNum, channelId)).setClickCount(ChannelMap((SourceBoardNum, channelId)).getClickCount + 1)
+			cliclMap.get((SourceBoardNum, channelId))+=1
 		}
-		MIndex
-	}
+		else {
+			throw new RuntimeException(s"sourceboard_channelId不匹配通道: ${SourceBoardNum},${channelId}")
+		}
 
-	//处理单个数据包
-	private def processSimpleData(arr:Array[Byte]): Array[SimplifyData] = {
-		val channelId = arr(12)&0x3f
-		ChannelMap.get((arr(9)&0xff,channelId)) match {
-			case Some(ltpcChannel) =>{
-				ltpcChannel.setClickCount(ltpcChannel.getClickCount + 1)
+		if (BC_trackers.contains((SourceBoardNum, channelId))) {
+			val trackers = BC_trackers.get((SourceBoardNum, channelId))
+			val size = trackers.get.length
+			val simpleLength = arr(13).toInt * 16
+			val dataPoints = new Array[Int](simpleLength)
+			var minCharge = Int.MaxValue
+			var maxCharge = Int.MinValue
 
-				val simpleLength =  arr(13).toInt * 16
-				val dataPoints = new Array[Short](simpleLength)
-				try {
-					for (i <- 0 to dataPoints.length - 1) {
-						dataPoints(i) =
-							((arr(28 + 2 * i) & 0x0f) << 8 |
-								(arr(29 + 2 * i) & 0xff)).toShort
-					}
-				} catch {
-					case e:ArrayIndexOutOfBoundsException =>println("ArrayIndexOutOfBoundsException")
+			try {
+				for (i <- dataPoints.indices) {
+					dataPoints(i) =
+						(arr(28 + 2 * i) & 0x0f) << 8 |
+							(arr(29 + 2 * i) & 0xff)
+					minCharge = math.min(minCharge, dataPoints(i))
+					maxCharge = math.max(maxCharge, dataPoints(i))
 				}
-
-				val planeWithTracks = ltpcChannel.getPlaneWithTracks
-				val piece = planeWithTracks.length
-				var Size = simpleLength / piece + 1
-				var start = 0
-				var end=0
-				val sfdArr = new Array[SimplifyData](piece)
-				for (i <- 0 until piece) {
-					val sd = new SimplifyData
-					end=start + Size * (i + 1)
-					if (end>dataPoints.length)
-						end=dataPoints.length-1
-					val max = findMax(dataPoints, start, end)
-					sd.setLtpcChannel(ltpcChannel)
-					sd.setTriggerNum((arr(20)&0xff)<<8|(arr(21)&0xff))
-					sd.setTrackerNum(planeWithTracks(i).getTracker.trackerNum)
-					sd.setCharge(dataPoints(max).toInt)
-					sd.setPID(ltpcChannel.getPid)
-					sd.setPlaneNum(planeWithTracks(i).getPlane.planeNum)
-					if (sd.getTriggerNum<=3)
-						sd.setShorts(dataPoints)
-					start += Size
-					sfdArr(i)=sd
+				if (trigger_chargeMin.contains(trigger)) {
+					trigger_chargeMin(trigger) = math.min(trigger_chargeMin(trigger), minCharge)
 				}
-				sfdArr
+				else {
+					trigger_chargeMin.put(trigger, minCharge)
+				}
+				if (trigger_chargeMax.contains(trigger)) {
+					trigger_chargeMax(trigger) = math.max(trigger_chargeMax(trigger), maxCharge)
+				}
+				else {
+					trigger_chargeMax.put(trigger, maxCharge)
+				}
 			}
-			case None => {
-				println(s"(${arr(9).toInt}.toInt,${channelId}) not match channel")
-				Array()
+			catch {
+				case e: ArrayIndexOutOfBoundsException => println("ArrayIndexOutOfBoundsException")
 			}
+			val outs = new Array[Array[Int]](size)
+			val length = (simpleLength / size)
+
+			for (i <- 0 until size) {
+				val splitArr = new Array[Int](length + 6)
+				splitArr(0) = trigger
+				splitArr(2) = time_left
+				splitArr(3) = time_right
+				splitArr(4) = SourceBoardNum
+				splitArr(5) = channelId
+				splitArr(1) = trackers.get(i)
+				val start = i * length
+				for (j <- 0 until length) {
+					splitArr(6 + j) = dataPoints(start + j)
+				}
+				outs(i) = splitArr
+			}
+			outs
+		}
+		else {
+			throw new RuntimeException(s"board_channelId不匹配的数据包: ${SourceBoardNum},${channelId}")
 		}
 	}
 }

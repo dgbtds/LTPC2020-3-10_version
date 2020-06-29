@@ -194,7 +194,7 @@ public class ConfigController {
                 fileProgressBar.progressProperty().unbind();
                 fileProgressBar.setProgress(0);
 
-                ScalaAnalyse scalaAnalyse = new ScalaAnalyse(file.getAbsolutePath(),"",fileProgressBar,ConfigLog);
+                ScalaAnalyse scalaAnalyse = new ScalaAnalyse(file.getParent(),file.getName(),fileProgressBar,ConfigLog);
                 scalaAnalyse.start();
 
                 scalaAnalyse.setOnSucceeded(event -> {
@@ -314,32 +314,32 @@ public class ConfigController {
         }
         DetectorPaintController.setTriggerNum(trigger);
         DetectorPaintController.setDataSource(dataSource);
-        List<SimplifyData> sdList =dataSource.getSdList();
-        Integer finalTrigger = trigger;
-        Integer finalPlane = plane;
-        Stream<SimplifyData> simplifyDataStream = sdList.stream()
-                .filter(s -> s.getTriggerNum() == finalTrigger).filter(s -> s.getTriggerNum() == finalTrigger);
-        if (tracker!=null){
-            Integer finalTracker = tracker;
-            Stream<SimplifyData> streamTracker = simplifyDataStream.filter(s -> s.getTrackerNum() == finalTracker);
-            if (channel!=null){
-                Integer finalChannel = channel;
-                ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamTracker.filter(s -> s.getTrackerNum() == finalChannel).collect(Collectors.toList());
-                DetectorPaintController.fillRect(collect);
-                ConfigLog.appendText("\n填充 触发号:"+planeS+" 径迹"+trackerS+" 通道"+channelS+" 成功！");
-            }
-            else {
-                ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamTracker.collect(Collectors.toList());
-                DetectorPaintController.fillRect(collect);
-                ConfigLog.appendText("\n填充 触发号:"+planeS+" 径迹"+trackerS+" 成功！");
-            }
-        }
-        else {
-            Stream<SimplifyData> streamPlane=simplifyDataStream.filter(s -> s.getPlaneNum() == finalPlane);
-            ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamPlane.collect(Collectors.toList());
-            DetectorPaintController.fillRect(collect);
-            ConfigLog.appendText("\n填充 触发号:"+triggerS+"平面:"+planeS+"成功！");
-        }
+//        List<SimplifyData> sdList =dataSource.getSdList();
+//        Integer finalTrigger = trigger;
+//        Integer finalPlane = plane;
+//        Stream<SimplifyData> simplifyDataStream = sdList.stream()
+//                .filter(s -> s.getTriggerNum() == finalTrigger).filter(s -> s.getTriggerNum() == finalTrigger);
+//        if (tracker!=null){
+//            Integer finalTracker = tracker;
+//            Stream<SimplifyData> streamTracker = simplifyDataStream.filter(s -> s.getTrackerNum() == finalTracker);
+//            if (channel!=null){
+//                Integer finalChannel = channel;
+//                ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamTracker.filter(s -> s.getTrackerNum() == finalChannel).collect(Collectors.toList());
+//                DetectorPaintController.fillRect(collect);
+//                ConfigLog.appendText("\n填充 触发号:"+planeS+" 径迹"+trackerS+" 通道"+channelS+" 成功！");
+//            }
+//            else {
+//                ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamTracker.collect(Collectors.toList());
+//                DetectorPaintController.fillRect(collect);
+//                ConfigLog.appendText("\n填充 触发号:"+planeS+" 径迹"+trackerS+" 成功！");
+//            }
+//        }
+//        else {
+//            Stream<SimplifyData> streamPlane=simplifyDataStream.filter(s -> s.getPlaneNum() == finalPlane);
+//            ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamPlane.collect(Collectors.toList());
+//            DetectorPaintController.fillRect(collect);
+//            ConfigLog.appendText("\n填充 触发号:"+triggerS+"平面:"+planeS+"成功！");
+//        }
     }
 
     public static LtpcDetector getLtpcDetector() {

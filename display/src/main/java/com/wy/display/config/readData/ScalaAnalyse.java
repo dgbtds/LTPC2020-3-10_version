@@ -22,14 +22,14 @@ import javafx.scene.control.TextArea;
  * @create: 2020-04-29 15:35
  **/
 public class ScalaAnalyse extends Service<DataSource> implements Runtime {
-    private String localfile;
-    private String outfile;
+    private String Dictory;
+    private String sourceDataName;
     private ProgressBar fileProgressBar;
     private TextArea ConfigLog;
 
-    public ScalaAnalyse(String localfile, String outfile, ProgressBar fileProgressBar, TextArea ConfigLog) {
-        this.localfile = localfile;
-        this.outfile = outfile;
+    public ScalaAnalyse(String Dictory, String sourceDataName, ProgressBar fileProgressBar, TextArea ConfigLog) {
+        this.Dictory = Dictory;
+        this.sourceDataName = sourceDataName;
         this.fileProgressBar=fileProgressBar;
         this.ConfigLog=ConfigLog;
     }
@@ -44,7 +44,7 @@ public class ScalaAnalyse extends Service<DataSource> implements Runtime {
         return new Task<DataSource>() {
             @Override
             protected DataSource call() throws Exception {
-                return  scala.sumit.LocalSubmitApp.analyseData(localfile,outfile,fileProgressBar,ConfigLog);
+                return  scala.sumit.LocalSubmitApp.analyseData(Dictory, sourceDataName,fileProgressBar,ConfigLog);
             }
         };
     }

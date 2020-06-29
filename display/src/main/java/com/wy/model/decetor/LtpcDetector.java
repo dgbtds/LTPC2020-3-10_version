@@ -31,6 +31,7 @@ public class LtpcDetector implements Serializable {
 	public void setChannels(List<LtpcChannel> channels) {
 		this.channels = channels;
 	}
+
 	public LtpcDetector() {
 		super();
 	}

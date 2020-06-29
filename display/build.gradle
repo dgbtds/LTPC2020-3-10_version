@@ -1,3 +1,15 @@
+//解决windows下 gradel文件名过长的问题
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "gradle.plugin.ua.eshepelyuk:ManifestClasspath:1.0.0"
+    }
+}
+apply plugin: "ua.eshepelyuk.ManifestClasspath"
 def appMainClass = 'com.wy.Main'
 apply plugin: 'java'
 apply plugin: 'javafx-gradle-plugin'
@@ -32,20 +44,21 @@ ext {
     jarName=''
 }
 dependencies {
-    compile('mysql:mysql-connector-java:5.1.48')
 
-    compile 'com.esotericsoftware:kryo-shaded:4.0.0'
-    compile 'commons-codec:commons-codec:1.10'
 
     compile "org.apache.spark:spark-core_$scalaVersion:$sparkVersion-preview2"
     compile "org.apache.spark:spark-sql_$scalaVersion:$sparkVersion-preview2"
-    compile  "org.apache.spark:spark-streaming_$scalaVersion:$sparkVersion-preview2"
 
 
 
-    compile "org.scala-lang:scala-library:$scalaVersion"
+//    compile "org.scala-lang:scala-library:$scalaVersion"
     compile 'org.apache.poi:poi:3.17'
     compile 'org.apache.poi:poi-ooxml:3.17'
+
+    //hbase
+    compile ('org.apache.hbase.connectors.spark:hbase-spark:1.0.0')
+
+    compile ('org.apache.hbase:hbase-client:2.0.1')
 }
 jar {
 //后缀名
@@ -63,7 +76,6 @@ jar {
 
     }
 }
-
 tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
 }

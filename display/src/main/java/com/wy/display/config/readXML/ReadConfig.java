@@ -9,8 +9,7 @@ import com.wy.Main;
 import com.wy.model.decetor.*;
 import org.apache.poi.ss.usermodel.*;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.util.*;
 
@@ -35,6 +34,28 @@ public class ReadConfig {
     public static void main(String[] args) throws Exception {
         ReadConfig.setDetectorByXlxs(new File(Main.class.getResource("/detector.xlsx").getFile()));
         List<LtpcChannel> channels = ltpcDetector.getChannels();
+        TreeMap<String, PlaneWithTrack[]> map = new TreeMap<>();
+        channels.forEach(c->{
+            String str=c.getSourceBoardNum()+" "+c.getChannelId();
+            map.put(str,c.getPlaneWithTracks());
+        });
+        File file = new File("C:\\Users\\dgbtds\\Desktop\\LtpcExe\\MyApp\\trackmap.txt");
+        if (!file.isFile()) {
+            file.createNewFile();
+        }
+        BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+        map.forEach((k,v)->{
+            String line=k;
+            for (int i=0;i<v.length;i++){
+                line=line+" "+v[i].getTracker().trackerNum;
+            }
+            try {
+                writer.write(line+"\r\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        writer.close();
     }
     @SuppressWarnings("deprecation")
     public static <T> List<T> parseFromExcel(File file, int firstIndex, Class<T> aimClass) {

@@ -205,91 +205,91 @@ public class StatisticsController {
                 channelHitMap.setSelected(false);
                 boardHitMap.setSelected(false);
             }
-            if (frequency.isSelected()){
-                int chargeMin = dataSource.getChargeMin();
-                double bean = (dataSource.getChargeMax() - chargeMin) / beanNum;
-                 int [] energyDistribution=new int[(int) beanNum];
-                dataSource.getSdList().forEach(s->{
-                    int i = (int) ((s.getCharge() - dataSource.getChargeMin()) / bean);
-                    if (i>=beanNum){
-                        i= (int) (beanNum-1);
-                    }
-                    energyDistribution[i]+=1;
-                });
-                XYChart.Series<String, Number> series = new XYChart.Series<>();
-                for(int i=0;i<energyDistribution.length;i++){
-                    int s = (int)(chargeMin + i  * bean);
-                    int e = (int)(chargeMin + (i + 1) * bean);
-                    series.getData().add(new XYChart.Data<>(s+"-"+e,energyDistribution[i]));
-                }
-
-                CategoryAxis barChartX = new CategoryAxis();
-                barChartX.setLabel("Energy Bean");
-                NumberAxis barChartY = new NumberAxis();
-                barChartY.setLabel("Package Count");
-
-                frequencyChart=new BarChart<>(barChartX,barChartY);
-                frequencyChart.setTitle("Data Energy Distribution");
-                frequencyChart.setBarGap(3);
-                frequencyChart.setCategoryGap(0);
-                frequencyChart.setPrefWidth(hBox.getPrefWidth()/2);
-                frequencyChart.getData().add(series);
-                hBox.getChildren().add(frequencyChart);
-                showEnergy=true;
-            }
+//            if (frequency.isSelected()){
+//                int chargeMin = dataSource.getChargeMin();
+//                double bean = (dataSource.getChargeMax() - chargeMin) / beanNum;
+//                 int [] energyDistribution=new int[(int) beanNum];
+//                dataSource.getSdList().forEach(s->{
+//                    int i = (int) ((s.getCharge() - dataSource.getChargeMin()) / bean);
+//                    if (i>=beanNum){
+//                        i= (int) (beanNum-1);
+//                    }
+//                    energyDistribution[i]+=1;
+//                });
+//                XYChart.Series<String, Number> series = new XYChart.Series<>();
+//                for(int i=0;i<energyDistribution.length;i++){
+//                    int s = (int)(chargeMin + i  * bean);
+//                    int e = (int)(chargeMin + (i + 1) * bean);
+//                    series.getData().add(new XYChart.Data<>(s+"-"+e,energyDistribution[i]));
+//                }
+//
+//                CategoryAxis barChartX = new CategoryAxis();
+//                barChartX.setLabel("Energy Bean");
+//                NumberAxis barChartY = new NumberAxis();
+//                barChartY.setLabel("Package Count");
+//
+//                frequencyChart=new BarChart<>(barChartX,barChartY);
+//                frequencyChart.setTitle("Data Energy Distribution");
+//                frequencyChart.setBarGap(3);
+//                frequencyChart.setCategoryGap(0);
+//                frequencyChart.setPrefWidth(hBox.getPrefWidth()/2);
+//                frequencyChart.getData().add(series);
+//                hBox.getChildren().add(frequencyChart);
+//                showEnergy=true;
+//            }
             else {
                 hBox.getChildren().remove(frequencyChart);
                 frequencyChart=null;
             }
         });
-        energyLoss.setOnAction(event -> {
-            if (showText||showHitmap) {
-                hBox.getChildren().clear();
-                showHitmap=false;
-                showText=false;
-                channelHitMap.setSelected(false);
-                boardHitMap.setSelected(false);
-            }
-            if (energyLoss.isSelected()){
-                int[] EnergyLossArr = new int[Tracker.allTrackerNum];
-                dataSource.getSdList().forEach(s->{
-                    int trackerNum = s.getTrackerNum();
-                    EnergyLossArr[trackerNum-1]+=s.getCharge();
-                });
-                XYChart.Series<String, Number> series = new XYChart.Series<>();
-                for(int i=0;i<EnergyLossArr.length;i++){
-                    int j = i + 1;
-                    String s = String.valueOf(j);
-                    Tracker tracker = Tracker.trackerHashMap.get(j);
-                    if (tracker==null){
-                        Alert error = new Alert(Alert.AlertType.ERROR,"ERROR:  Tracker"+j+" Not Existed Exception");
-                        error.showAndWait();
-                    }
-                    double e = (double)EnergyLossArr[i]/(double)tracker.cluster*6 ;
-                    series.getData().add(new XYChart.Data<>(s,e));
-                    System.out.println("num-- " + j+" : loss-- "+e);
-                }
-
-                CategoryAxis barChartX = new CategoryAxis();
-                barChartX.setLabel("Tracker Number");
-                NumberAxis barChartY = new NumberAxis();
-                barChartY.setLabel("TrackerEnergy/TrackerLength C/mm");
-
-
-                energyLossChart=new BarChart<>(barChartX,barChartY);
-                energyLossChart.setBarGap(3);
-                energyLossChart.setCategoryGap(0);
-                energyLossChart.setPrefWidth(hBox.getPrefWidth()/2);
-                energyLossChart.setTitle("Average Energy Loss");
-                energyLossChart.getData().add(series);
-                hBox.getChildren().add(energyLossChart);
-                showEnergy=true;
-            }
-            else {
-                hBox.getChildren().remove(energyLossChart);
-                energyLossChart=null;
-            }
-        });
+//        energyLoss.setOnAction(event -> {
+//            if (showText||showHitmap) {
+//                hBox.getChildren().clear();
+//                showHitmap=false;
+//                showText=false;
+//                channelHitMap.setSelected(false);
+//                boardHitMap.setSelected(false);
+//            }
+//            if (energyLoss.isSelected()){
+//                int[] EnergyLossArr = new int[Tracker.allTrackerNum];
+//                dataSource.getSdList().forEach(s->{
+//                    int trackerNum = s.getTrackerNum();
+//                    EnergyLossArr[trackerNum-1]+=s.getCharge();
+//                });
+//                XYChart.Series<String, Number> series = new XYChart.Series<>();
+//                for(int i=0;i<EnergyLossArr.length;i++){
+//                    int j = i + 1;
+//                    String s = String.valueOf(j);
+//                    Tracker tracker = Tracker.trackerHashMap.get(j);
+//                    if (tracker==null){
+//                        Alert error = new Alert(Alert.AlertType.ERROR,"ERROR:  Tracker"+j+" Not Existed Exception");
+//                        error.showAndWait();
+//                    }
+//                    double e = (double)EnergyLossArr[i]/(double)tracker.cluster*6 ;
+//                    series.getData().add(new XYChart.Data<>(s,e));
+//                    System.out.println("num-- " + j+" : loss-- "+e);
+//                }
+//
+//                CategoryAxis barChartX = new CategoryAxis();
+//                barChartX.setLabel("Tracker Number");
+//                NumberAxis barChartY = new NumberAxis();
+//                barChartY.setLabel("TrackerEnergy/TrackerLength C/mm");
+//
+//
+//                energyLossChart=new BarChart<>(barChartX,barChartY);
+//                energyLossChart.setBarGap(3);
+//                energyLossChart.setCategoryGap(0);
+//                energyLossChart.setPrefWidth(hBox.getPrefWidth()/2);
+//                energyLossChart.setTitle("Average Energy Loss");
+//                energyLossChart.getData().add(series);
+//                hBox.getChildren().add(energyLossChart);
+//                showEnergy=true;
+//            }
+//            else {
+//                hBox.getChildren().remove(energyLossChart);
+//                energyLossChart=null;
+//            }
+//        });
     }
 
 
