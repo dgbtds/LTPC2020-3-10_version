@@ -5,15 +5,25 @@ package com.wy; /**
  * @Data : 2020/3/10 13:01
  */
 
+import com.wy.display.LtpcController;
+import com.wy.display.daq.DaqController;
 import com.wy.display.statistics.StatisticsController;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @program: LTPC2020-3-4-version2
@@ -25,17 +35,47 @@ import java.net.URL;
  * @create: 2020-03-10 13:01
  **/
 public class Main extends Application {
+    private LtpcController controller=null;
+    @Override
+    public void stop() {
+        System.out.println("stop soft");
+    }
     @Override
     public void start(Stage primaryStage) throws Exception{
-        URL resource = getClass().getResource("/config.fxml");
-        Parent root = FXMLLoader.load(resource);
 
+        URL resource =Main.class.getResource("/ltpc.fxml");
+
+        FXMLLoader loader = new FXMLLoader(resource);
+
+        Parent root = loader.load();
+
+        controller = loader.getController();
+
+        Scene scene = new Scene(root);
+        primaryStage.setScene(scene);
         primaryStage.setTitle("Ltpc Data Online Soft");
-        primaryStage.setScene(new Scene(root));
         primaryStage.setX(0);
         primaryStage.setY(0);
-//        primaryStage.setAlwaysOnTop(true);
+        primaryStage.setResizable(true);
         primaryStage.show();
+
+        primaryStage.setOnCloseRequest(event -> {
+            if ("Running".equals(controller.daqController.Status)) {
+                DaqController.executor.shutdown();
+                try {
+                    DaqController.executor.awaitTermination(1, TimeUnit.SECONDS);
+                    if (!DaqController.executor.isShutdown()){
+                        DaqController.executor.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                Alert alert = new Alert(Alert.AlertType.WARNING, "daq process is not closed! please use red X button!!!");
+                alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+                alert.showAndWait().ifPresent(response -> Platform.exit());
+            }
+            Platform.exit();
+        });
     }
     public static void showDetector() throws IOException {
         URL resource = Main.class.getResource("/DetectorPaint.fxml");
@@ -45,17 +85,6 @@ public class Main extends Application {
         primaryStage.setScene(new Scene(root));
         primaryStage.setX(1000);
         primaryStage.setY(0);
-        primaryStage.show();
-    }
-        //打开统计窗口
-    public static void showFileResult() throws IOException {
-        URL resource = Main.class.getResource("/Statistics.fxml");
-        Parent root = FXMLLoader.load(resource);
-        Stage primaryStage = new Stage();
-        primaryStage.setX(1000);
-        primaryStage.setY(800);
-        primaryStage.setTitle("File Analysed Result");
-        primaryStage.setScene(new Scene(root,1200,800));
         primaryStage.show();
     }
     public static void main(String[] args) {

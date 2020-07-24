@@ -51,10 +51,10 @@ public class CreateData  extends Service<Integer> {
                 bytes2[2*i]=(byte) (nextInt>>8);
                 bytes2[2*i+1]=(byte) (nextInt&0xff);
             }
-            bytes2[288*2]=(byte) 0x1a;
-            bytes2[288*2+1]=(byte) 0x2b;
-            bytes2[288*2+2]=(byte) 0x3c;
-            bytes2[288*2+3]=(byte) 0x4d;
+            bytes2[288*2]=(byte) 0x5a;
+            bytes2[288*2+1]=(byte) 0x5a;
+            bytes2[288*2+2]=(byte) 0x5a;
+            bytes2[288*2+3]=(byte) 0x5a;
             dos.write(bytes1);
             dos.write(bytes2);
         }
@@ -71,7 +71,7 @@ public class CreateData  extends Service<Integer> {
                 , (byte) 0x0, (byte) 0x0, (byte)(external_trigger_timestamp>>40),(byte)((external_trigger_timestamp>>40)&0xff)
                 , (byte)((external_trigger_timestamp>>24)&0xff), (byte)((external_trigger_timestamp>>16)&0xff), (byte)((external_trigger_timestamp>>8)&0xff), (byte)(external_trigger_timestamp&0xff)
 
-                , (byte) 0x1a, (byte) 0x2b, (byte) 0x3c, (byte) 0x4d
+                , (byte) 0x5a, (byte) 0x5a, (byte) 0x5a, (byte) 0x5a
         };
         dos.write(bytes);
     }

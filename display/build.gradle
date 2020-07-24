@@ -51,7 +51,7 @@ jar {
 //后缀名
     archiveBaseName.set('LTPC')
     archiveAppendix.set('DAQ')
-    archiveVersion.set('1.6')
+    archiveVersion.set('2.0')
     archiveClassifier.set('release')
     archiveExtension.set('jar')
     jarName="${archiveBaseName.get()}-${archiveAppendix.get()}-${archiveVersion.get()}-${archiveClassifier.get()}.${archiveExtension.get()}"

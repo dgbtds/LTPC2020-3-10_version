@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<Pane xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.wy.display.daq.DaqController">
+   <children>
+      <VBox fx:id="daqBox" prefHeight="905.0" prefWidth="865.0">
+         <children>
+            <VBox spacing="20.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <HBox prefHeight="100.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                     <children>
+                        <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="79.0" prefWidth="792.0" text="LTPC 参数配置界面" textAlignment="CENTER" textFill="#792716" HBox.hgrow="ALWAYS">
+                           <font>
+                              <Font size="40.0" fx:id="x1" />
+                           </font>
+                           <HBox.margin>
+                              <Insets />
+                           </HBox.margin>
+                        </Label>
+                        <Button fx:id="close" mnemonicParsing="false" onAction="#closeAction" prefHeight="78.0" prefWidth="72.0" text="X" textFill="#da0b0b" HBox.hgrow="ALWAYS">
+                           <font>
+                              <Font size="36.0" />
+                           </font>
+                           <HBox.margin>
+                              <Insets right="1.0" />
+                           </HBox.margin>
+                        </Button>
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER" spacing="35.0" VBox.vgrow="ALWAYS">
+                     <children>
+                        <Button fx:id="setdir" mnemonicParsing="false" onAction="#setdirAction" prefHeight="80.0" prefWidth="180.0" text="SET Config Dir" HBox.hgrow="ALWAYS" />
+                        <ComboBox fx:id="cb" prefHeight="80.0" prefWidth="180.0" promptText="Choose Board" HBox.hgrow="ALWAYS" />
+                        <Button fx:id="enableBoard" mnemonicParsing="false" onAction="#enableBoardAction" prefHeight="80.0" prefWidth="180.0" text="Enable Board" HBox.hgrow="ALWAYS" />
+                        <Button id="save" fx:id="saveChange" mnemonicParsing="false" onAction="#saveChangeAction" prefHeight="80.0" prefWidth="180.0" text="Save Change" HBox.hgrow="ALWAYS" />
+                     </children>
+                     <VBox.margin>
+                        <Insets left="20.0" right="20.0" />
+                     </VBox.margin>
+                  </HBox>
+               </children>
+            </VBox>
+            <VBox alignment="CENTER" prefHeight="248.0" prefWidth="865.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <HBox prefHeight="241.0" prefWidth="865.0" spacing="40.0">
+                     <children>
+                        <TableView fx:id="tabview" onMouseClicked="#clickitemAction" HBox.hgrow="ALWAYS">
+                          <columns>
+                            <TableColumn fx:id="key" prefWidth="181.0" text="Configuration" />
+                            <TableColumn fx:id="value" prefWidth="219.0" text="Value" />
+                          </columns>
+                           <HBox.margin>
+                              <Insets bottom="10.0" top="20.0" />
+                           </HBox.margin>
+                        </TableView>
+                        <VBox prefHeight="241.0" prefWidth="465.0" spacing="40.0" HBox.hgrow="ALWAYS">
+                           <children>
+                              <TextField fx:id="changeValue" prefHeight="116.0" prefWidth="454.0" VBox.vgrow="ALWAYS" />
+                              <HBox alignment="CENTER" prefHeight="169.0" prefWidth="465.0" spacing="40.0">
+                                 <children>
+                                    <Button fx:id="runDaq" mnemonicParsing="false" onAction="#runDaqAction" prefHeight="78.0" prefWidth="175.0" text="RUN DAQ" HBox.hgrow="ALWAYS">
+                                       <HBox.margin>
+                                          <Insets left="10.0" right="10.0" />
+                                       </HBox.margin>
+                                    </Button>
+                                    <MenuBar prefHeight="78.0" prefWidth="175.0" HBox.hgrow="ALWAYS">
+                                      <menus>
+                                        <Menu fx:id="command" mnemonicParsing="false" text="Command">
+                                          <items>
+                                                <MenuItem fx:id="Z" mnemonicParsing="false" text="Z" />
+                                                <SeparatorMenuItem mnemonicParsing="false" />
+                                                <MenuItem fx:id="F" mnemonicParsing="false" text="F" />
+                                                <SeparatorMenuItem mnemonicParsing="false" />
+                                                <MenuItem fx:id="H" mnemonicParsing="false" text="H" />
+                                                <SeparatorMenuItem mnemonicParsing="false" />
+                                                <MenuItem fx:id="G" mnemonicParsing="false" text="G" />
+                                                <SeparatorMenuItem mnemonicParsing="false" />
+                                                <MenuItem fx:id="B" mnemonicParsing="false" text="B" />
+                                                <SeparatorMenuItem mnemonicParsing="false" />
+                                                <MenuItem fx:id="Q" mnemonicParsing="false" text="Q" />
+                                          </items>
+                                        </Menu>
+                                      </menus>
+                                       <HBox.margin>
+                                          <Insets left="10.0" right="10.0" />
+                                       </HBox.margin>
+                                    </MenuBar>
+                                 </children>
+                                 <VBox.margin>
+                                    <Insets left="20.0" right="20.0" />
+                                 </VBox.margin>
+                              </HBox>
+                           </children>
+                           <HBox.margin>
+                              <Insets bottom="10.0" top="20.0" />
+                           </HBox.margin>
+                        </VBox>
+                     </children>
+                  </HBox>
+               </children>
+               <VBox.margin>
+                  <Insets left="20.0" right="20.0" />
+               </VBox.margin>
+            </VBox>
+            <TextArea fx:id="daqlog" prefHeight="448.0" prefWidth="865.0" VBox.vgrow="ALWAYS">
+               <VBox.margin>
+                  <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+               </VBox.margin>
+            </TextArea>
+         </children>
+      </VBox>
+   </children>
+</Pane>

@@ -21,6 +21,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import com.wy.model.data.DataSource;
+import org.apache.spark.sql.catalyst.expressions.aggregate.Last;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -40,7 +41,10 @@ public class ConfigController {
     };
     @FXML
     private TextField triggerCount;
-
+    @FXML
+    public Pane anaPane;
+    @FXML
+    public VBox vbox;
     @FXML
     private TextField channelNum;
     @FXML
@@ -54,11 +58,20 @@ public class ConfigController {
     @FXML
     private ProgressBar fileProgressBar;
     @FXML
+    private Button creatBut;
+    @FXML
+    private Button colorBut;
+    @FXML
+    private Button fillBut;
+    @FXML
+    private Button fileopenBut;
+    @FXML
     private TextArea ConfigLog;
     private  DataSource dataSource;
     private static LtpcDetector ltpcDetector;
 
     private boolean isConfiged=false;
+    private File dir=null;
     @FXML
     private void initialize(){
         ConfigLog.setFont(Font.font(20));
@@ -82,6 +95,12 @@ public class ConfigController {
         Tooltip triggerC = new Tooltip("模拟数据触发数");
         triggerCount.setTooltip(triggerC);
         setIntegerFormatter(triggerCount);
+
+        creatBut.setDisable(true);
+        colorBut.setDisable(true);
+        fillBut.setDisable(true);
+        fileopenBut.setDisable(true);
+
     }
     @FXML
     public void creatDataAction(){
@@ -91,6 +110,7 @@ public class ConfigController {
                 FileChooser fileChooser = FileChooseBuild();
                 fileChooser.setTitle("Save File");
                 File file = fileChooser.showSaveDialog(new Stage());
+
 
                 fileProgressBar.progressProperty().unbind();
                 fileProgressBar.setProgress(0);
@@ -137,7 +157,7 @@ public class ConfigController {
     @FXML
     private void controlButtonAction() throws Exception {
         FileChooser fileChooser = FileChooseBuild();
-        fileChooser.setTitle("Please Choose ConfigFile");
+        fileChooser.setTitle("Please import excel File");
         File file = fileChooser.showOpenDialog(new Stage());
 //        File file =new File(Main.class.getResource("/detector.xlsx").getFile());
         if (file!=null) {
@@ -149,7 +169,12 @@ public class ConfigController {
 //            ConfigLog.appendText(s);
 
             Main.showDetector();
+            dir=file.getParentFile();
             isConfiged=true;
+            creatBut.setDisable(false);
+            fillBut.setDisable(false);
+            fileopenBut.setDisable(false);
+
         }
         else {
             ConfigLog.setStyle("-fx-text-fill:red");
@@ -205,11 +230,7 @@ public class ConfigController {
                         ConfigLog.appendText("\nData Analyse Over,Use Time: "+UseSeconds+" s");
                         ConfigLog.appendText("\n##################End Analyse##################\n");
                         StatisticsController.setDataSource(this.dataSource);
-                        try {
-                            Main.showFileResult();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        colorBut.setDisable(false);
                     }
                 });
             }
@@ -219,48 +240,83 @@ public class ConfigController {
             ConfigLog.appendText("\n请先配置参数文件");
         }
     }
-    public static FileChooser FileChooseBuild(){
+    public  FileChooser FileChooseBuild(){
         FileChooser fileChooser = new FileChooser();
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("所有类型","*.*"),
                 new FileChooser.ExtensionFilter("Excel类型","*.xlsx"),
                 new FileChooser.ExtensionFilter("数据类型","*.bin")
         );
-        File file = new File("C:\\Users\\dgbtds\\Desktop\\LtpcExe\\MyApp");
-        if (file.exists()){
-            fileChooser.setInitialDirectory(file);
+        if (dir!=null){
+            fileChooser.setInitialDirectory(dir);
         }
         return fileChooser;
     }
     @FXML
     private void ColorButtonAction(){
+        DataSource dataSource = StatisticsController.getDataSource();
+        if (dataSource==null){
+            ConfigLog.appendText("datasource is null, please check!!!");
+            return;
+        }
 
         VBox ColorBlock = new VBox();
+        VBox labels = new VBox();
         ColorBlock.setPrefHeight(560);
         ColorBlock.setPrefWidth(120);
         ColorBlock.setBorder(new Border(
+                new BorderStroke(Color.DODGERBLUE, BorderStrokeStyle.SOLID,new CornerRadii(10), BorderWidths.DEFAULT)
+        ));
+        labels.setPrefHeight(560);
+        labels.setPrefWidth(120);
+        labels.setBorder(new Border(
                 new BorderStroke(Color.DODGERBLUE, BorderStrokeStyle.SOLID,new CornerRadii(10), BorderWidths.DEFAULT)
         ));
 
         double wdith = ColorBlock.getPrefWidth();
         double height = ColorBlock.getPrefHeight();
         int count = colors.length + 1;
+
+        int bin = (dataSource.getChargeMax() - dataSource.getChargeMin()) / count;
+        int lastbin=dataSource.getChargeMax();
+
         for(int i=0;i<colors.length;i++){
-            Rectangle rectangle = new Rectangle(0, (double) height  / (double)count, wdith, (double) height  / (double)count);
+            Rectangle rectangle = new Rectangle(0, height / (double)count, wdith, height / (double)count);
             rectangle.setFill(colors[colors.length-1-i]);
             rectangle.setStyle("-fx-stroke-type:outside");
             ColorBlock.getChildren().add(rectangle);
+
+            Label lab = new Label((lastbin-bin)+"->"+lastbin);
+            lastbin=lastbin-bin;
+            lab.setPrefWidth(wdith);
+            lab.setFont(Font.font(15));
+            lab.setPrefHeight(height /(double)count);
+            labels.getChildren().add(lab);
         }
         Label label = new Label("颜色标尺");
         label.setPrefWidth(wdith);
         label.setFont(Font.font(20));
-        label.setPrefHeight((double)height/(double)count);
+        label.setPrefHeight(height /(double)count);
         ColorBlock.getChildren().add(label);
+
+        Label label2 = new Label(" 能量区间 ");
+        label2.setPrefWidth(wdith);
+        label2.setFont(Font.font(20));
+        label2.setPrefHeight(height /(double)count);
+        labels.getChildren().add(label2);
 
         Stage stage = new Stage();
         stage.initStyle(StageStyle.UTILITY);
         stage.setTitle("  颜色标尺 ");
-        stage.setScene(new Scene(ColorBlock));
+
+        HBox hbox = new HBox();
+        hbox.setPrefWidth(2*wdith+10);
+        hbox.setPrefHeight(height);
+        hbox.setSpacing(10);
+        Scene scene = new Scene(hbox);
+        hbox.getChildren().addAll(ColorBlock,labels);
+
+        stage.setScene(scene);
         stage.setAlwaysOnTop(true);
         stage.setResizable(false);
         stage.show();

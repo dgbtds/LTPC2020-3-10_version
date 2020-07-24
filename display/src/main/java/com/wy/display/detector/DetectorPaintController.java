@@ -284,24 +284,24 @@ public class DetectorPaintController {
                             String leftColor = rectL.getFill().toString();
 
 
-                            HBox hBox = new HBox();
-                            hBox.setSpacing(20);
+                            VBox vBox = new VBox();
+                            vBox.setSpacing(20);
 
                             LineChart<Number, Number> waveChart1 = setWaveChart(middle, "#" + middleColor.substring(2, 8));
                             if (channels.get(k - 1).getCol() == sd.getLtpcChannel().getCol()) {
                                 LineChart<Number, Number> waveChart0 = setWaveChart(right, "#" + rightColor.substring(2, 8));
-                                hBox.getChildren().add(waveChart0);
+                                vBox.getChildren().add(waveChart0);
                             }
 
-                            hBox.getChildren().add(waveChart1);
+                            vBox.getChildren().add(waveChart1);
 
                             if (channels.get(k + 1).getCol() == sd.getLtpcChannel().getCol()) {
                                 LineChart<Number, Number> waveChart2 = setWaveChart(left, "#" + leftColor.substring(2, 8));
-                                hBox.getChildren().add(waveChart2);
+                                vBox.getChildren().add(waveChart2);
                             }
 
                             Stage stage = new Stage();
-                            stage.setScene(new Scene(hBox));
+                            stage.setScene(new Scene(vBox));
                             stage.setTitle(" 触发号: " + triggerNum + " ,通道: " + middle.get().getPID() + " 的采样数据波形图");
                             stage.show();
                         });
