@@ -6,8 +6,11 @@ package com.wy.display.config.readXML;/**
  */
 
 import com.wy.Main;
+import com.wy.Utils.HDFSUtil;
 import com.wy.model.decetor.*;
 import org.apache.poi.ss.usermodel.*;
+import scala.collection.mutable.StringBuilder;
+import scala.math.Ordering;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,26 +19,25 @@ import java.util.*;
 
 /**
  * @program: LTPC 2020-3-4
- *
  * @description:读取探测器模型数据
- *
  * @author: WuYe
- *
  * @create: 2020-03-04 11:26
  **/
 public class ReadConfig {
     private static LtpcDetector ltpcDetector;
+
     public static LtpcDetector getLtpcDetector() {
         return ltpcDetector;
     }
+
     public <T> List<T> parseFromExcel(File file, Class<T> aimClass) {
         return parseFromExcel(file, 0, aimClass);
     }
 
     public static void main(String[] args) throws Exception {
-        ReadConfig.setDetectorByXlxs(new File(Main.class.getResource("/detector.xlsx").getFile()));
-        List<LtpcChannel> channels = ltpcDetector.getChannels();
+        ReadConfig.setDetectorByXlxs(new File("C:\\Users\\dgbtds\\Desktop\\LtpcExe\\MyApp\\detector.xlsx"));
     }
+
     @SuppressWarnings("deprecation")
     public static <T> List<T> parseFromExcel(File file, int firstIndex, Class<T> aimClass) {
         List<T> result = new ArrayList<T>();
@@ -47,7 +49,7 @@ public class ReadConfig {
             int lastRaw = sheet.getLastRowNum();
             for (int i = firstIndex; i <= lastRaw; i++) {
                 //第i行
-                Row row =  sheet.getRow(i);
+                Row row = sheet.getRow(i);
                 T parseObject = aimClass.newInstance();
                 Field[] fields = aimClass.getDeclaredFields();
                 for (int j = 0; j < fields.length; j++) {
@@ -87,79 +89,40 @@ public class ReadConfig {
             }
             fis.close();
             return result;
-        } catch ( Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("An error occured when parsing object from Excel" );
+            System.err.println("An error occured when parsing object from Excel");
         }
         return result;
     }
-    private static int  getSourecBoardNum(int area,int board){
-        if (area==0){
-            return board;
-        }
-        else {
-            return  (area-1)*6+7+board;
-        }
-    }
+
     public static void setDetectorByXlxs(File file) throws Exception {
-        //参数里的5表示有效行数从第5行开始
-        List<LtpcArea> listAeras=new ArrayList<LtpcArea>();
-        List<LtpcBoard> listBoards=new ArrayList<LtpcBoard>();
-        List<LtpcBoard> sublistBoards=new ArrayList<LtpcBoard>();
+        StringBuilder stringBuilder = new StringBuilder();
+        ltpcDetector = new LtpcDetector();
         List<LtpcChannel> listChannels = parseFromExcel(file, 1, LtpcChannel.class);
-        listChannels.forEach(c->{
-            c.setPlaneWithTracks(PlaneWithTrack.getPlaneWithTrack(c));
+        LtpcDetector.channels = listChannels;
+        listChannels.forEach(c -> {
+            c.computeTracks();
+            if (LtpcDetector.SourceBoardChannelsMap.containsKey(c.getSourceBoardNum())) {
+                LtpcDetector.SourceBoardChannelsMap.get(c.getSourceBoardNum()).addList(c);
+            } else {
+                LtpcSourceBoard ltpcSourceBoard = new LtpcSourceBoard(c.getArea(), c.getSourceBoardNum());
+                ltpcSourceBoard.addList(c);
+                LtpcDetector.SourceBoardChannelsMap.put(c.getSourceBoardNum(), ltpcSourceBoard);
+            }
+            if (c.getSourceBoardNum() != 0) {
+                if (LtpcDetector.sourceBoardChannelIdChannelMap.containsKey(c.getSourceBoardNum() + "," + c.getChannelId())) {
+                    throw new RuntimeException(c.getSourceBoardNum() + "," + c.getChannelId() + " 重复");
+                } else {
+                    LtpcDetector.sourceBoardChannelIdChannelMap.put(c.getSourceBoardNum() + "," + c.getChannelId(), c);
+                }
+            }
+            stringBuilder.append(c.getSourceBoardNum() +" "+c.getChannelId()+" ");
+            for (int i = 0; i < c.getTrackNums().length - 1; i++) {
+                stringBuilder.append(c.getTrackNums()[i] +" ");
+            }
+            stringBuilder.append(c.getTrackNums()[c.getTrackNums().length - 1] + "\r\n");
         });
-        int board=-1,area=-1;
-        LtpcArea ltpcArea =null;
-        LtpcBoard ltpcBoard =null;
-        for (int i = 0; i < listChannels.size(); i++) {
-            //由内向外生成
-            if(listChannels.get(i).getBoard()!=board) {
-                board=listChannels.get(i).getBoard();
-                //System.err.println("－－－新的board数："+board);
-                //老的放进去（每次ｂｏａｒｄ变化了才放进去）
-                if(ltpcBoard!=null) {
-                    ltpcArea.addList(ltpcBoard);
-                }
-                //生成新的
-                ltpcBoard=new LtpcBoard(area,board);
-                sublistBoards.add(ltpcBoard);
-                listBoards.add(ltpcBoard);
-            }
-
-            if(listChannels.get(i).getArea()!=area	) {
-                area=listChannels.get(i).getArea();
-                //System.err.println("新的area数："+area);
-                ltpcArea= new LtpcArea(area);
-                listAeras.add(ltpcArea);
-            }
-
-            ltpcBoard.addList(listChannels.get(i));
-        }
-
-        listChannels.forEach(c->{
-            if (c.getSourceBoardNum()!=0){
-                if (LtpcDetector.SourceBoardMap.containsKey(c.getSourceBoardNum())){
-                    LtpcSourceBoard ltpcSourceBoard = LtpcDetector.SourceBoardMap.get(c.getSourceBoardNum());
-                    ltpcSourceBoard.getLtpcChannels().add(c);
-                }
-                else {
-                    LtpcSourceBoard ltpcSourceBoard = new LtpcSourceBoard();
-                    ltpcSourceBoard.setSourceBoardNum(c.getSourceBoardNum());
-                    ltpcSourceBoard.setLtpcChannels(new LinkedList<>());
-                    ltpcSourceBoard.getLtpcChannels().add(c);
-                    LtpcDetector.SourceBoardMap.put(c.getSourceBoardNum(),ltpcSourceBoard);
-                }
-            }
-        });
-        HashMap<Integer, LtpcSourceBoard> sourceBoardMap = LtpcDetector.SourceBoardMap;
-        for( Map.Entry<Integer, LtpcSourceBoard> entrySet :sourceBoardMap.entrySet()){
-            LtpcSourceBoard sourceBoard = entrySet.getValue();
-            LinkedList<LtpcChannel> boardChannels = sourceBoard.getLtpcChannels();
-                sourceBoard.setArea(boardChannels.get(0).getArea());
-        }
-        ltpcArea.addList(ltpcBoard);
-        ltpcDetector=new LtpcDetector(listAeras, listBoards, listChannels);
+        HDFSUtil.writeFile("hdfs://hd01:8020/user/wy/trackmap.txt", stringBuilder.toString());
     }
 }

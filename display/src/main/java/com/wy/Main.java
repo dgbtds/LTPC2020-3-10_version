@@ -52,6 +52,10 @@ public class Main extends Application {
         controller = loader.getController();
 
         Scene scene = new Scene(root);
+
+//        scene.getStylesheets().add(Main.class.getResource("/sample.css")
+//                .toExternalForm());
+
         primaryStage.setScene(scene);
         primaryStage.setTitle("Ltpc Data Online Soft");
         primaryStage.setX(0);
@@ -63,7 +67,7 @@ public class Main extends Application {
             if ("Running".equals(controller.daqController.Status)) {
                 DaqController.executor.shutdown();
                 try {
-                    DaqController.executor.awaitTermination(1, TimeUnit.SECONDS);
+                    DaqController.executor.awaitTermination(3, TimeUnit.SECONDS);
                     if (!DaqController.executor.isShutdown()){
                         DaqController.executor.shutdownNow();
                     }
@@ -73,6 +77,12 @@ public class Main extends Application {
                 Alert alert = new Alert(Alert.AlertType.WARNING, "daq process is not closed! please use red X button!!!");
                 alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
                 alert.showAndWait().ifPresent(response -> Platform.exit());
+            }
+            controller.configController.executorService.shutdown();
+            try {
+                controller.configController.executorService.awaitTermination(10,TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
             Platform.exit();
         });

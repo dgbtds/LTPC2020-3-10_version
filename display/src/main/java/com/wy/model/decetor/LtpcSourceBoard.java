@@ -1,62 +1,52 @@
-package com.wy.model.decetor;/**
- * @description
- * @author: WuYe
- * @vesion:1.0
- * @Data : 2020/3/14 12:38
- */
+package com.wy.model.decetor;
 
 
 import scala.Serializable;
 
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * @program: LTPC2020-3-10_version
- *
- * @description:更新的来源板号
- *
- * @author: WuYe
- *
- * @create: 2020-03-14 12:38
- **/
+//之前使用的板号
 public class LtpcSourceBoard implements Serializable {
-    private int SourceBoardNum;
-    private int Area;//区号
-    private LinkedList<LtpcChannel> ltpcChannels;
-    private int ClickCount;
+	private int board;
+	private int area;
+	public int clickCount;
 
-    public int getArea() {
-        return Area;
-    }
+public List<LtpcChannel> list=null;
 
-    public void setArea(int area) {
-        Area = area;
-    }
+public int getBoard() {
+	return board;
+}
 
+public void setBoard(int board) {
+	this.board = board;
+}
 
-    public int getSourceBoardNum() {
-        return SourceBoardNum;
-    }
+public int getArea() {
+	return area;
+}
 
-    public void setSourceBoardNum(int sourceBoardNum) {
-        SourceBoardNum = sourceBoardNum;
-    }
+public void setArea(int area) {
+	this.area = area;
+}
+public void addList(LtpcChannel channel) {
+	this.list.add(channel);
+	}
+@Override
+public String toString() {
+	return "LtpcBoard [board=" + board + ", area=" + area + ", list=" + list + "]";
+}
 
+public LtpcSourceBoard() {
+	super();
+	// TODO Auto-generated constructor stub
+}
 
-    public LinkedList<LtpcChannel> getLtpcChannels() {
-        return ltpcChannels;
-    }
+public LtpcSourceBoard(int area, int board) {
+	super();
+	this.board = board;
+	this.area = area;
+	list= new ArrayList<>();
+} 
 
-    public void setLtpcChannels(LinkedList<LtpcChannel> ltpcChannels) {
-        this.ltpcChannels = ltpcChannels;
-    }
-
-    public int getClickCount() {
-        return ClickCount;
-    }
-
-    public void setClickCount(int clickCount) {
-        ClickCount = clickCount;
-    }
 }

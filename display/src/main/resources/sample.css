@@ -1,0 +1,29 @@
+/*root类选择器给所有的元素设置样式*/
+.root {
+    -fx-font-family: "微软雅黑";
+    -fx-font-size:16px;
+
+}
+
+
+/*button类型选择器设置所有Button的背景色*/
+.button {
+    -fx-background-color: darkgrey;
+}
+
+/*hover伪类选择器设置鼠标移过Button时的背景色*/
+.button:hover {
+    -fx-background-color: mediumvioletred;
+}
+
+/*id选择器设置Label标题的样式*/
+#daqtitle {
+    -fx-font-size: 40px;
+    -fx-font-weight: bolder;
+    -fx-text-fill: green;
+}
+#anatitle {
+    -fx-font-size: 40px;
+    -fx-font-weight: bolder;
+    -fx-text-fill: green;
+}

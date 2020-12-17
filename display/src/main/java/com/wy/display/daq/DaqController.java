@@ -6,25 +6,26 @@ package com.wy.display.daq;/**
  */
 
 import com.wy.model.data.Configuration;
-import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.Pane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -51,22 +52,25 @@ public class DaqController {
     @FXML
     private Button runDaq;
     @FXML
-    private Button enableBoard;
+    private Button ConfigBoard;
     @FXML
     private Button close;
+    @FXML
+    private Button autoReadOut;
     @FXML
     private ComboBox<Integer> cb;
     @FXML
     private TextArea daqlog;
+    @FXML
+    private HBox rb1;
+    @FXML
+    private HBox rb2;
     private Configuration selectedItem = null;
     public String Status = "Waitting";
     private String[] boards = {"254", "12", "14", "13", "18", "28",
             "31", "15", "16", "17", "19", "5",
             "2", "32", "27", "11", "26", "30", "33", "6"};
     private String[] cmds = new String[25];
-
-
-    private String Adir = null;
 
     private TreeMap<String, String> treemap = new TreeMap<>();
     private ObservableList<Configuration> entrys = FXCollections.observableArrayList();
@@ -75,11 +79,14 @@ public class DaqController {
     private BufferedReader bufferedReader;
     private Process process = null;
     private HashMap<String, File> filemap = new HashMap();
-    private int enableboardnum = 0;
-    private Configuration enableConf;
+    private int Configboardnum = 0;
+    private Configuration ConfigConf;
+    private Configuration EnableConf;
     private Properties prop = new Properties();
+    //enableboards String
+    private LinkedList<String> enboardStr = new LinkedList<String>();
 
-    public static ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 2, 0L, TimeUnit.MILLISECONDS,
+    public static ThreadPoolExecutor executor = new ThreadPoolExecutor(10, 11, 0L, TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>(10), r -> {
         Thread thread = new Thread(r);
         thread.setName("DAQ Thread");
@@ -89,6 +96,13 @@ public class DaqController {
 
     @FXML
     private void initialize() {
+        //get all radioButtons
+        ObservableList<Node> children1 = rb1.getChildren();
+        ObservableList<Node> children2 = rb2.getChildren();
+        ArrayList<Node> radioButtons = new ArrayList<>(children1.size() + children2.size());
+        radioButtons.addAll(children1);
+        radioButtons.addAll(children2);
+
         for (int i = 0; i < 20; i++) {
             filemap.put(String.format("Config_board_%d.txt", i), null);
         }
@@ -104,9 +118,6 @@ public class DaqController {
                     String newValue = menuItem.getId();
                     if ("Running".equals(Status) && process != null && process.isAlive()) {
                         try {
-                            daqlog.appendText("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-                            daqlog.appendText("you choose command------>" + newValue + "\n");
-                            daqlog.appendText("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
                             if ("Q".equals(newValue)) {
                                 if (process != null && process.isAlive()) {
                                     bufferedWriter.write(newValue + "\n");
@@ -134,22 +145,60 @@ public class DaqController {
         }
         cb.setItems(iarr);
         cb.getSelectionModel().selectedItemProperty().addListener((observer, oldValue, newValue) -> {
+            ConfigBoard.setDisable(true);
+            Configboardnum = newValue;
+            ConfigConf.setValue(newValue+"");
+
             StringJoiner stringJoiner = new StringJoiner(" , ");
-            for (int i = 0; i < newValue; i++) {
+            for (int i = 0; i <= Configboardnum; i++) {
                 stringJoiner.add(boards[i]);
             }
-            enableboardnum = newValue;
-            daqlog.appendText("you choose enable boards: " + stringJoiner.toString() + "\n");
-            daqlog.appendText("Please Enable Board \n");
+            //使能选择框
+            radioButtons.forEach(c -> {
+                RadioButton c1 = (RadioButton) c;
+                c1.setSelected(false);
+                int id = Integer.parseInt(c.getId());
+                if (id <= Configboardnum) {
+                    c1.setDisable(false);
+                }
+                else {
+                    c1.setDisable(true);
+                }
+            });
+            daqlog.appendText("you choose config boards: " + stringJoiner.toString() + "\n");
+            daqlog.appendText("Please enable Boards \n");
         });
 
         //disable button
         cb.setDisable(true);
         runDaq.setDisable(true);
-        enableBoard.setDisable(true);
+        ConfigBoard.setDisable(true);
         saveChange.setDisable(true);
         close.setDisable(true);
+        command.setDisable(true);
 
+
+        radioButtons.forEach(c -> {
+            RadioButton rb=(RadioButton) c;
+            rb.selectedProperty().addListener( (observable, oldValue, newValue) -> {
+                String id = rb.getId();
+                ConfigBoard.setDisable(false);
+                if (rb.isSelected()) {
+                    if (!enboardStr.contains(boards[Integer.parseInt(id)])) {
+                        enboardStr.add(boards[Integer.parseInt(id)]);
+                        EnableConf.setValue(String.join(",", enboardStr));
+                    }
+                    daqlog.appendText("you enable board" + id + "!!!\n");
+                } else {
+                    if (enboardStr.contains(boards[Integer.parseInt(id)])) {
+                        enboardStr.removeIf(s -> s.equals(boards[Integer.parseInt(id)]));
+                        EnableConf.setValue(String.join(",", enboardStr));
+                    }
+                    daqlog.appendText("you disable board" + id + "!!!\n");
+                }
+            });
+
+        });
     }
 
     @FXML
@@ -159,16 +208,19 @@ public class DaqController {
             daqlog.appendText("Configuration cant set null \n");
             return;
         }
+        if ("EnableBoards".equals(selectedItem.getKey())) {
+            daqlog.appendText(" cant change EnableBoards!!!\n");
+            return;
+        }
+        if ("ConfigBoardNum".equals(selectedItem.getKey())) {
+            daqlog.appendText("cant change ConfigBoardNum!!!\n");
+            return;
+        }
         if (selectedItem != null) {
             if (!value.equals(selectedItem.getValue())) {
-                if (!"EnableBoardNum".equals(selectedItem.getKey())) {
-                    daqlog.appendText("change --" + selectedItem.getKey() + "--from " + selectedItem.getValue() + "--to--" + value + "\n");
-                    selectedItem.setValue(value);
-                    prop.setProperty(selectedItem.getKey(), value);
-                    setCmds();
-                } else {
-                    daqlog.appendText("cant change EnableBoardNum!!!\n");
-                }
+                daqlog.appendText("change --" + selectedItem.getKey() + "--from " + selectedItem.getValue() + "--to--" + value + "\n");
+                selectedItem.setValue(value);
+                prop.setProperty(selectedItem.getKey(), value);
             }
         } else {
             daqlog.appendText("not choose configuration!!!\n");
@@ -176,22 +228,23 @@ public class DaqController {
     }
 
     @FXML
-    public void closeAction() throws InterruptedException, IOException {
+    public void closeAction() throws IOException {
         File file = filemap.get("DefaultConfig.prop");
         if (file == null) {
             daqlog.appendText("DefaultConfig.prop not exist\n");
             return;
         }
         saveDefaultConfig(file);
+        daqlog.appendText("RUN Configuration Save At :"+file.getName()+"\n");
         if (process != null && process.isAlive()) {
             process.destroy();
+            daqlog.appendText(" Killing DAQ Processed!!!"+"\n");
         }
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.SECONDS);
-        if (!executor.isShutdown()) {
-            executor.shutdownNow();
+        if (process==null || !process.isAlive()){
+            Status="Waitting";
+            daqlog.appendText("DAQ  Stop success!!!"+"\n");
         }
-        Platform.exit();
+
     }
 
     @FXML
@@ -211,7 +264,6 @@ public class DaqController {
                 loadDefaultConfig();
                 cb.setDisable(false);
                 runDaq.setDisable(false);
-                enableBoard.setDisable(false);
                 saveChange.setDisable(false);
                 close.setDisable(false);
             }
@@ -219,21 +271,16 @@ public class DaqController {
     }
 
     @FXML
-    private void enableBoardAction() throws IOException {
-        if (enableboardnum < boards.length) {
-            daqlog.appendText("------------->start enable boards\n");
-            enableConf.setValue(enableboardnum + "");
-            prop.setProperty("EnableBoardNum", "" + enableboardnum);
-            setCmds();
+    private void ConfigBoardAction() throws IOException {
+        if (Configboardnum < boards.length) {
+            daqlog.appendText("------------->start config boards\n");
+            ConfigConf.setValue(Configboardnum + "");
+            prop.setProperty("ConfigBoardNum", "" + Configboardnum);
 
             //修改board文件
             setBoardFile();
             //修改Config_multiboard.txt
             setMulboardFile();
-            //使能小板
-            for (int i = 0; i < enableboardnum; i++) {
-                cmds[5 + i] = "15";
-            }
         }
     }
 
@@ -254,10 +301,10 @@ public class DaqController {
                     continue;
                 }
                 if (line.contains("board_n")) {
-                    String[] s = line.split(" *");
+                    String[] s = line.split(" +");
                     List<String> stringList = Arrays.stream(s).filter(c -> !"".equals(c)).collect(Collectors.toList());
-                    if (stringList.size() == 2) {
-                        stringList.set(1, "[" + (enableboardnum + 1) + "]");
+                    if (stringList.size() >= 2) {
+                        stringList.set(1, "[" + (Configboardnum + 1) + "]");
                         // 将该行写入内存
                         tempStream.write(String.join(" ", stringList));
                     } else {
@@ -317,7 +364,7 @@ public class DaqController {
                         tempStream.write(line + "\n");
                         continue;
                     }
-                    if (i <= enableboardnum) {
+                    if (enboardStr.contains(boards[i])) {
                         stringList.set(3, "[1]");
                     } else {
                         stringList.set(3, "[0]");
@@ -350,29 +397,62 @@ public class DaqController {
 
     private void loadDefaultConfig() throws IOException {
         prop.load(new FileInputStream(filemap.get("DefaultConfig.prop")));
-        String num = prop.getProperty("EnableBoardNum");
-
         treemap.put("daqExe", prop.getProperty("daqExe"));
         treemap.put("singleFileTime", prop.getProperty("singleFileTime"));
         treemap.put("singleFileNum", prop.getProperty("singleFileNum"));
         treemap.put("MoldingTime", prop.getProperty("MoldingTime"));
         treemap.put("Gain", prop.getProperty("Gain"));
-        treemap.put("EnableBoardNum", num);
-
-        setCmds();
+        treemap.put("ConfigBoardNum", prop.getProperty("ConfigBoardNum"));
+        treemap.put("EnableBoards", prop.getProperty("EnableBoards"));
+        String enableBoards = prop.getProperty("EnableBoards");
+        String ConfigBoards = prop.getProperty("ConfigBoardNum");
+        if (enableBoards!=null && ConfigBoards!=null ) {
+            String[] EnableBoards =enableBoards.split(",",-1);
+            for (String b:EnableBoards){
+                b=b.trim();
+                if (Arrays.asList(boards).contains(b)){
+                    enboardStr.add(b);
+                }
+            }
+            rb1.getChildren().forEach(c->{
+                if (Integer.parseInt(c.getId())<=Integer.parseInt(ConfigBoards)){
+                    c.setDisable(false);
+                }
+                if (enboardStr.contains(boards[Integer.parseInt(c.getId())])){
+                    RadioButton c1 = (RadioButton) c;
+                    c1.setSelected(true);
+                }
+            });
+            rb2.getChildren().forEach(c->{
+                if (Integer.parseInt(c.getId())<=Integer.parseInt(prop.getProperty("ConfigBoardNum"))){
+                    c.setDisable(false);
+                }
+                if (enboardStr.contains(boards[Integer.parseInt(c.getId())])){
+                    RadioButton c1 = (RadioButton) c;
+                    c1.setSelected(true);
+                }
+            });
+        }
 
         keyArr = new String[treemap.keySet().size()];
         treemap.keySet().toArray(keyArr);
-
 
         key.setCellValueFactory(new PropertyValueFactory<>("key"));
         value.setCellValueFactory(new PropertyValueFactory<>("value"));
 
         treemap.forEach((k, v) -> {
-            if ("EnableBoardNum".equals(k)) {
-                enableConf = new Configuration(k, v);
-                entrys.add(enableConf);
-            } else {
+            if (v==null){
+                v="Null";
+            }
+            if ("ConfigBoardNum".equals(k)) {
+                ConfigConf = new Configuration(k, v);
+                entrys.add(ConfigConf);
+            }
+            else if ("EnableBoards".equals(k)){
+                EnableConf=new Configuration(k,v);
+                entrys.add(EnableConf);
+            }  else
+             {
                 entrys.add(new Configuration(k, v));
             }
         });
@@ -387,9 +467,10 @@ public class DaqController {
         cmds[3] = prop.getProperty("MoldingTime");
         cmds[4] = prop.getProperty("Gain");
 
+        prop.setProperty("EnableBoards",String.join(",",enboardStr));
 
         for (int i = 0; i < boards.length; i++) {
-            if (i <= Integer.parseInt(prop.getProperty("EnableBoardNum"))) {
+            if (enboardStr.contains(boards[i])) {
                 cmds[5 + i] = "15";
             } else {
                 cmds[5 + i] = "0";
@@ -399,13 +480,15 @@ public class DaqController {
 
     private void saveDefaultConfig(File saveFile) throws IOException {
         FileWriter fileWriter = new FileWriter(saveFile);
-        prop.store(fileWriter, "save config");
+        prop.store(fileWriter, "Save Config");
         fileWriter.close();
+        daqlog.appendText("\n----------------Save  Config Success-----------------\n");
     }
 
     @FXML
     private void runDaqAction() {
-        if (Status.equals("Waitting")) {
+        if ("Waitting".equals(Status)) {
+            setCmds();
             try {
                 for (String s : cmds) {
                     if (s == null) {
@@ -413,37 +496,51 @@ public class DaqController {
                         return;
                     }
                 }
+                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                String date = df.format(new Date());
+                File file = new File(cmds[0]);
+                if (file == null) {
+                    javafx.application.Platform.runLater(() ->
+                            daqlog.appendText(" exe path is null\n"));
+                    return;
+                }
+                daqlog.appendText("\n^^^^^^^^^^^^^^^^^^^ Saving RUN Config ^^^^^^^^^^^^^^^^^^^\n");
+                String savePath = file.getParentFile().getParent() + "\\Data_bin_files\\ConfigInfo_RUN_" + date + ".txt";
+                File file1 = new File(savePath);
+                if (file1==null){
+                    daqlog.appendText("----------------Save  Config Failed-----------------\n");
+                    daqlog.appendText(file.getParentFile().getParent() + "\\Data_bin_files\\  Dir not Exist!!!");
+                    return;
+                }
+                saveDefaultConfig(file1);
+
+                daqlog.appendText("\n%%%%%%%%%%%%%%%%%%%%RUN DAQ Config Info%%%%%%%%%%%%%%%%%%%%\n" );
+                daqlog.appendText("daqExe:  "+prop.getProperty("daqExe","Null")+"\n");
+                daqlog.appendText("singleFileTime:  "+prop.getProperty("singleFileTime","Null")+"\n");
+                daqlog.appendText("singleFileNum:   "+prop.getProperty("singleFileNum","Null")+"\n");
+                daqlog.appendText("MoldingTime:   "+ prop.getProperty("MoldingTime","Null")+"\n");
+                daqlog.appendText("Gain:    "+prop.getProperty("Gain","Null")+"\n");
+                daqlog.appendText("ConfigBoardNum:    "+ prop.getProperty("ConfigBoardNum","Null")+"\n");
+                daqlog.appendText("EnableBoards:    "+prop.getProperty("EnableBoards","Null")+"\n");
+                daqlog.appendText("\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" );
+
 
                 process = new ProcessBuilder(cmds).start();
-
                 if (process.isAlive()) {
+                    //获取进程输入流
+                    bufferedWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+                    //获取进程输出流
+                    bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                     Status = "Running";
-                    javafx.application.Platform.runLater(() ->
-                            {
-                                daqlog.appendText("RUN DAQ Config Info:\n" + String.join("-", cmds) + "\n");
-                                daqlog.appendText("\n############### LtpcDaq is Start #################\n\n");
-                            }
-                    );
+                    command.setDisable(false);
+                    autoReadOut.setDisable(false);
                 }
-
-                //获取进程输入流
-                bufferedWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-
-                //获取进程输出流
-                bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                else {
+                    daqlog.appendText("\n############### LtpcDaq Start Failed #################\n");
+                }
                 Runnable logout = () -> {
-
                     String line;
                     try {
-                        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-                        String date = df.format(new Date());
-                        File file = filemap.get("DefaultConfig.prop");
-                        if (file == null) {
-                            daqlog.appendText("DefaultConfig.prop not exist\n");
-                            return;
-                        }
-                        String savePath = file.getParentFile().getParent() + "\\Data_bin_files\\ConfigInfo_RUN_" + date + ".txt";
-                        saveDefaultConfig(new File(savePath));
                         while ((line = bufferedReader.readLine()) != null) {
                             String finalLine = line;
                             javafx.application.Platform.runLater(() ->
@@ -459,36 +556,39 @@ public class DaqController {
             } catch (Exception e) {
 
             }
-        } else if (Status.equals("Running")) {
+        } else if ("Running".equals(Status)) {
             daqlog.appendText("DAQ is already RUNNING , Quit First!!!\n");
         }
     }
 
 
-    public static File Fileopen(String dir) throws IOException {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("所有类型", "*.*"),
-                new FileChooser.ExtensionFilter("configfile", "*.txt")
-        );
-        if (dir != null) {
-            fileChooser.setInitialDirectory(new File(dir));
-        }
-        File file = fileChooser.showOpenDialog(new Stage());
-        if (file != null) {
-            Runtime runtime = Runtime.getRuntime();
-            String cmd = String.format("cmd.exe /c start %s", file.getAbsolutePath());
-            System.out.println(cmd);
-            runtime.exec(cmd);
-        }
-        return file;
-    }
+
 
     @FXML
     private void clickitemAction(MouseEvent event) {
         if (event.getClickCount() == 1) {
             selectedItem = (Configuration) tabview.getSelectionModel().getSelectedItem();
             changeValue.setText(selectedItem.getValue());
+        }
+    }
+    @FXML
+    private void autoReadOutAction() throws IOException {
+        if ("Running".equals(Status) && process.isAlive()) {
+            bufferedWriter.write("Z" + "\n");
+            bufferedWriter.flush();
+            bufferedWriter.write("F" + "\n");
+            bufferedWriter.flush();
+            bufferedWriter.write("Z" + "\n");
+            bufferedWriter.flush();
+            bufferedWriter.write("H" + "\n");
+            bufferedWriter.flush();
+            bufferedWriter.write("G" + "\n");
+            bufferedWriter.flush();
+            bufferedWriter.write("B" + "\n");
+            bufferedWriter.flush();
+        }
+        else {
+            daqlog.appendText("DAQ Not Running!!!\n");
         }
     }
 

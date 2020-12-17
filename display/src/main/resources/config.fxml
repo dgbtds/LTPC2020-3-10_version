@@ -13,23 +13,22 @@
 
 <Pane fx:id="anaPane" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.wy.display.config.ConfigController">
    <children>
-      <VBox fx:id="vbox" spacing="40.0">
+      <VBox fx:id="vbox" spacing="20.0">
          <children>
-            <Label alignment="CENTER" prefHeight="51.0" prefWidth="763.0" text="LTPC 数据分析界面" textFill="#792716" VBox.vgrow="ALWAYS">
-               <font>
-                  <Font size="40.0" />
-               </font>
-            </Label>
-            <HBox prefHeight="52.0" prefWidth="593.0" spacing="40.0" VBox.vgrow="ALWAYS">
+            <VBox VBox.vgrow="ALWAYS">
                <children>
-                  <TextField id="TriggerCount" fx:id="triggerCount" prefHeight="52.0" prefWidth="158.0" promptText="Trigger Count" HBox.hgrow="ALWAYS">
+                  <Label fx:id="anatitle" alignment="CENTER" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" text="LTPC 数据分析界面" textFill="#792716" VBox.vgrow="ALWAYS">
+                     <font>
+                        <Font size="40.0" />
+                     </font>
+                  </Label>
+               </children>
+            </VBox>
+            <HBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="66.0" prefWidth="835.0" spacing="40.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <ProgressBar id="fileProcessBar" fx:id="fileProgressBar" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="41.0" prefWidth="795.0" progress="0.0" HBox.hgrow="ALWAYS">
                      <HBox.margin>
-                        <Insets left="160.0" />
-                     </HBox.margin>
-                  </TextField>
-                  <ProgressBar id="fileProcessBar" fx:id="fileProgressBar" prefHeight="52.0" prefWidth="455.0" progress="0.0" HBox.hgrow="ALWAYS">
-                     <HBox.margin>
-                        <Insets left="10.0" right="10.0" />
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
                      </HBox.margin>
                   </ProgressBar>
                </children>
@@ -37,50 +36,83 @@
                   <Insets left="10.0" right="10.0" />
                </VBox.margin>
             </HBox>
-            <HBox prefHeight="54.0" prefWidth="669.0" spacing="60.0" VBox.vgrow="ALWAYS">
+            <HBox prefHeight="85.0" prefWidth="835.0" spacing="100.0">
                <children>
-                  <Button fx:id="importbut" mnemonicParsing="false" onAction="#controlButtonAction" prefHeight="54.0" prefWidth="140.0" text="Import" HBox.hgrow="ALWAYS">
-                     <font>
-                        <Font size="20.0" />
-                     </font>
+                  <TextField id="TriggerCount" fx:id="triggerCount" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" promptText="Trigger Count" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
+                  </TextField>
+                  <Button fx:id="creatBut" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#creatDataAction" text="Creat Data" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
                   </Button>
-                  <Button fx:id="creatBut" mnemonicParsing="false" onAction="#creatDataAction" prefHeight="54.0" prefWidth="140.0" text="Creat Data" HBox.hgrow="ALWAYS">
-                     <font>
-                        <Font size="20.0" />
-                     </font>
+                  <Button fx:id="image" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#imageAction" text="Info" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
                   </Button>
-                  <Button id="FileOpen" fx:id="colorBut" mnemonicParsing="false" onAction="#ColorButtonAction" prefHeight="54.0" prefWidth="140.0" text="Color" textAlignment="LEFT" HBox.hgrow="ALWAYS">
-                     <font>
-                        <Font size="20.0" />
-                     </font>
+               </children>
+            </HBox>
+            <HBox prefHeight="71.0" prefWidth="835.0" spacing="50.0">
+               <children>
+                  <Button fx:id="importbut" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#controlButtonAction" text="Import" textAlignment="CENTER" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
                   </Button>
-                  <Button id="FileOpen" fx:id="fileopenBut" mnemonicParsing="false" onAction="#FileOpenAction" prefHeight="54.0" prefWidth="145.0" text="FileOpen" HBox.hgrow="ALWAYS">
-                     <font>
-                        <Font size="20.0" />
-                     </font>
+                  <Button id="FileOpen" fx:id="fileopenBut" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#FileOpenAction" text="FileOpen" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
+                  </Button>
+                  <Button id="FileOpen" fx:id="colorBut" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#ColorButtonAction" text="Color" textAlignment="LEFT" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
+                  </Button>
+                  <Button fx:id="fillBut" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#fillButtonAction" text="Fill" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
                   </Button>
                </children>
                <VBox.margin>
                   <Insets left="10.0" right="10.0" />
                </VBox.margin>
             </HBox>
-            <HBox prefHeight="54.0" prefWidth="764.0" spacing="20.0" VBox.vgrow="ALWAYS">
+            <HBox prefHeight="65.0" prefWidth="815.0" spacing="20.0" VBox.vgrow="ALWAYS">
                <children>
-                  <TextField id="Trigger" fx:id="triggerNum" prefHeight="52.0" prefWidth="151.0" promptText="Trigger" HBox.hgrow="ALWAYS" />
-                  <TextField id="Trigger" fx:id="planeNum" prefHeight="52.0" prefWidth="158.0" promptText="Plane" HBox.hgrow="ALWAYS" />
-                  <TextField id="Trigger" fx:id="trackerNum" prefHeight="52.0" prefWidth="152.0" promptText="Tracker" text="" HBox.hgrow="ALWAYS" />
-                  <TextField id="Trigger" fx:id="channelNum" prefHeight="52.0" prefWidth="168.0" promptText="ChannelNum" HBox.hgrow="ALWAYS" />
-                  <Button fx:id="image" mnemonicParsing="false" onAction="#imageAction" prefHeight="54.0" prefWidth="142.0" text="Info" HBox.hgrow="ALWAYS" />
-                  <Button fx:id="fillBut" mnemonicParsing="false" onAction="#fillButtonAction" prefHeight="54.0" prefWidth="142.0" text="Fill" HBox.hgrow="ALWAYS" />
+                  <TextField id="Trigger" fx:id="triggerNum" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" promptText="Trigger" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin></TextField>
+                  <TextField id="Trigger" fx:id="trackerNum" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" promptText="Tracker" text="" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin></TextField>
+                  <TextField id="Trigger" fx:id="boardId" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" promptText="board" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin>
+                  </TextField>
+                  <TextField id="Trigger" fx:id="channelId" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" promptText="ChannelId" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </HBox.margin></TextField>
                </children>
                <VBox.margin>
                   <Insets left="10.0" right="10.0" />
                </VBox.margin>
             </HBox>
-            <TextArea fx:id="ConfigLog" prefHeight="522.0" prefWidth="732.0" promptText="LogBack" wrapText="true" VBox.vgrow="ALWAYS">
+            <TextArea fx:id="ConfigLog" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="435.0" prefWidth="795.0" promptText="LogBack" wrapText="true" VBox.vgrow="ALWAYS">
                <VBox.margin>
-                  <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />
+                  <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
                </VBox.margin>
+               <padding>
+                  <Insets bottom="20.0" right="20.0" />
+               </padding>
             </TextArea>
          </children>
       </VBox>

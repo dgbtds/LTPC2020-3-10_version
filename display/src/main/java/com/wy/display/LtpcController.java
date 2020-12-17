@@ -49,9 +49,6 @@ public class LtpcController {
     private void initialize() throws IOException {
 
 
-//        configController.anaPane.prefWidthProperty().bind(tabPane.widthProperty());
-//        configController.anaPane.prefHeightProperty().bind(tabPane.heightProperty());
-//
         daqController.daqBox.prefWidthProperty().bind(tabPane.widthProperty());
         daqController.daqBox.prefHeightProperty().bind(tabPane.heightProperty());
         statisticController.vBox.prefWidthProperty().bind(tabPane.widthProperty());

@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/ZeppelinRemoteNotebooks/ZeppelinInstance_Zeppelin_connection@ZeppelinConnections@-8651188516193149698.iml" filepath="$PROJECT_DIR$/.idea/ZeppelinRemoteNotebooks/ZeppelinInstance_Zeppelin_connection@ZeppelinConnections@-8651188516193149698.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/ZeppelinRemoteNotebooks/ZeppelinInstance_Zeppelin_connection@ZeppelinConnections@4290015310778616834.iml" filepath="$PROJECT_DIR$/.idea/ZeppelinRemoteNotebooks/ZeppelinInstance_Zeppelin_connection@ZeppelinConnections@4290015310778616834.iml" />
     </modules>
   </component>

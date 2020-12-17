@@ -12,7 +12,6 @@ import com.wy.model.data.Rectangle;
 import com.wy.model.data.SimplifyData;
 import com.wy.model.decetor.LtpcChannel;
 import com.wy.model.decetor.LtpcDetector;
-import com.wy.model.decetor.PlaneWithTrack;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Side;
@@ -20,6 +19,7 @@ import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -27,7 +27,12 @@ import javafx.scene.paint.Paint;
 import javafx.scene.transform.Affine;
 import javafx.scene.transform.Rotate;
 import javafx.stage.Stage;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import scala.Tuple2;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,11 +50,9 @@ public class DetectorPaintController {
     private static DataSource dataSource;
     private static int triggerNum;
     private double scalingFactor = 2;
-    private static HashMap<Integer, Rectangle> rectangleMap = new HashMap<>();
     //以下两个参数描述拖拽的位置
     private double dragX = 0;
     private double dragY = 0;
-    private static boolean isFilled = false;
     @FXML
     private VBox ColorBlocks;
     @FXML
@@ -59,7 +62,7 @@ public class DetectorPaintController {
 
     @FXML
     private void initialize() throws Exception {
-        List<LtpcChannel> channels = ConfigController.getLtpcDetector().getChannels();
+        List<LtpcChannel> channels = LtpcDetector.channels;
         setDetectorPane(channels);
     }
 
@@ -111,88 +114,40 @@ public class DetectorPaintController {
             rectangle.setStrokeWidth(0.3);
             rectangle.setStyle("-fx-stroke-type:outside");
             StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append("PID: ").append(c.getPid()).append(", ChannelNum: ").append(c.getPid()).append(" ,Board: ").append(c.getSourceBoardNum()).append(" ,Tracker: ");
-            PlaneWithTrack[] planeWithTracks = c.getPlaneWithTracks();
-            for (PlaneWithTrack pwt : planeWithTracks) {
-                stringBuilder.append(pwt.getTracker().trackerNum).append(" ");
-            }
+            stringBuilder.append("sourceBoard: ").append(c.getSourceBoardNum()).append(", ChannelNum: ").append(c.getChannelId()).append(" ,trackNums: ").append(Arrays.toString(c.getTrackNums()));
             Tooltip id = new Tooltip(stringBuilder.toString());
             Tooltip.install(rectangle, id);
             c.setRectangle(rectangle);
             detectorPane.getChildren().add(rectangle);
             if (c.getSourceBoardNum() != 0) {
-                rectangleMap.put(c.getPid(), rectangle);
-                rectangle.setFill(colors[c.getColor()]);
+                if (c.getColor() < 0) {
+                    rectangle.setFill(Color.WHITE);
+                } else {
+                    rectangle.setFill(colors[c.getColor()]);
+                }
                 rectangle.setStroke(Color.BLACK);
             }
             if (c.getSourceBoardNum() == 0) {
                 rectangle.setFill(Color.GRAY);
             }
         });
-//        if (dataSource != null) {
-//            Optional<SimplifyData> middle = dataSource.getSdList().stream().filter(l -> l.getChannelNum() == c.getPid()).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
-//            middle.ifPresent(simplifyData -> {
-//                SimplifyData sd = middle.get();
-//                Optional<SimplifyData> right = dataSource.getSdList().stream()
-//                        .filter(l -> l.getChannelNum() == c.getPid() - 1).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
-//                Optional<SimplifyData> left = dataSource.getSdList().stream()
-//                        .filter(l -> l.getChannelNum() == c.getPid() + 1).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
-//                rectangle.setOnMouseClicked(event -> {
-//                    Paint fill = rectangle.getFill();
-//                    String middleColor = fill.toString();
-//                    Rectangle rectR = rectangleMap.get(c.getPid() - 1);
-//                    String rightColor = rectR.getFill().toString();
-//                    Rectangle rectL = rectangleMap.get(c.getPid() + 1);
-//                    String leftColor = rectL.getFill().toString();
-//
-//
-//                    HBox hBox = new HBox();
-//                    hBox.setSpacing(20);
-//
-//                    LineChart<Number, Number> waveChart1 = setWaveChart(middle, "#" + middleColor.substring(2, 8));
-//                    if (channels.get(c.getPid() - 1).getCol() == sd.getLtpcChannel().getCol()) {
-//                        LineChart<Number, Number> waveChart0 = setWaveChart(right, "#" + rightColor.substring(2, 8));
-//                        hBox.getChildren().add(waveChart0);
-//                    }
-//
-//                    hBox.getChildren().add(waveChart1);
-//
-//                    if (channels.get(c.getPid() + 1).getCol() == sd.getLtpcChannel().getCol()) {
-//                        LineChart<Number, Number> waveChart2 = setWaveChart(left, "#" + leftColor.substring(2, 8));
-//                        hBox.getChildren().add(waveChart2);
-//                    }
-//
-//                    Stage stage = new Stage();
-//                    stage.setScene(new Scene(hBox));
-//                    stage.setTitle(" 触发号: " + triggerNum + " ,通道: " + middle.get().getChannelNum() + " 的采样数据波形图");
-//                    stage.show();
-//                });
-            //点击弹出通道波形
-
-//        }
     }
 
-    private LineChart<Number, Number> setWaveChart(Optional<SimplifyData> first, String color) {
-        NumberAxis X = new NumberAxis(0, 300, 1);
+    private LineChart<Number, Number> setWaveChart(String points, int splitStart, int tracker, String color) {
+        String[] pointsInt = points.trim().split(";");
+        NumberAxis X = new NumberAxis(splitStart-5, splitStart+pointsInt.length+5, 1);
         X.setLabel("Time/25ns");
-        NumberAxis Y = new NumberAxis(0, dataSource.getChargeMax(), 20);
+        NumberAxis Y = new NumberAxis();
         Y.setLabel("charge");
         LineChart<Number, Number> wave = new LineChart<Number, Number>(X, Y);
         wave.setStyle("CHART_COLOR_1: " + color + " ;");
 
-        short[] shorts;
         XYChart.Series<Number, Number> waveData = new XYChart.Series<>();
+        waveData.setName("startIndex:" + splitStart + " ,trackId:" + tracker);
 
-        if (first.isPresent()) {
-            SimplifyData simplifyData = first.get();
-            shorts = simplifyData.getShorts();
-            waveData.setName(simplifyData.getPID() + "");
-        } else {
-            shorts = new short[300];
-            waveData.setName("No Clicked");
-        }
-        for (int i = 0; i < shorts.length; i++) {
-            waveData.getData().add(new XYChart.Data<>(i, shorts[i]));
+
+        for (int i = 0; i < pointsInt.length; i++) {
+            waveData.getData().add(new XYChart.Data<>(splitStart + i, Integer.valueOf(pointsInt[i])));
         }
         wave.getData().add(waveData);
         return wave;
@@ -263,60 +218,76 @@ public class DetectorPaintController {
             }
         });
         detectorPane.setOnMouseClicked(e -> {
-            double x=e.getX()-detectorPane.getPrefWidth()*0.5-dragX;
-            double y=detectorPane.getPrefHeight()*0.5-e.getY()+dragY;
-            System.out.println("click: x:"+x+" , y:"+y);
-            if (dataSource!=null) {
-                rectangleMap.forEach((k, v) -> {
-                    if (v.contains(x, y)) {
-                        Optional<SimplifyData> middle = dataSource.getSdList().stream().filter(l -> l.getPID() == k).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
-                        middle.ifPresent(simplifyData -> {
-                            SimplifyData sd = middle.get();
-                            Optional<SimplifyData> right = dataSource.getSdList().stream()
-                                    .filter(l -> l.getPID() == k - 1).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
-                            Optional<SimplifyData> left = dataSource.getSdList().stream()
-                                    .filter(l -> l.getPID() == k + 1).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
-                            Paint fill = v.getFill();
-                            String middleColor = fill.toString();
-                            Rectangle rectR = rectangleMap.get(k - 1);
-                            String rightColor = rectR.getFill().toString();
-                            Rectangle rectL = rectangleMap.get(k + 1);
-                            String leftColor = rectL.getFill().toString();
+            double x = e.getX() - detectorPane.getPrefWidth() * 0.5 - dragX;
+            double y = detectorPane.getPrefHeight() * 0.5 - e.getY() + dragY;
+            System.out.println("click: x:" + x + " , y:" + y);
+            LtpcDetector.sourceBoardChannelIdChannelMap.values().forEach(c -> {
+                if (c.getRectangle().contains(x, y)) {
+                    System.out.println(c.toString() + "contains");
+                    Dataset<Row> dr = ConfigController.ds.select("splitstart", "points", "tracker").where("trigger=" + ConfigController.trigger + " and board=" + c.getSourceBoardNum() + " and channelId=" + c.getChannelId());
+                    List<Row> rows = dr.collectAsList();
 
+                    VBox vBox = new VBox();
+                    vBox.setSpacing(20);
+                    rows.forEach(row -> {
+                        LineChart<Number, Number> waveChart = setWaveChart(row.getString(1), row.getInt(0), row.getInt(2), c.getRectangle().getFill().toString().substring(2, 8));
+                        vBox.getChildren().add(waveChart);
+                    });
 
-                            VBox vBox = new VBox();
-                            vBox.setSpacing(20);
-
-                            LineChart<Number, Number> waveChart1 = setWaveChart(middle, "#" + middleColor.substring(2, 8));
-                            if (channels.get(k - 1).getCol() == sd.getLtpcChannel().getCol()) {
-                                LineChart<Number, Number> waveChart0 = setWaveChart(right, "#" + rightColor.substring(2, 8));
-                                vBox.getChildren().add(waveChart0);
-                            }
-
-                            vBox.getChildren().add(waveChart1);
-
-                            if (channels.get(k + 1).getCol() == sd.getLtpcChannel().getCol()) {
-                                LineChart<Number, Number> waveChart2 = setWaveChart(left, "#" + leftColor.substring(2, 8));
-                                vBox.getChildren().add(waveChart2);
-                            }
-
-                            Stage stage = new Stage();
-                            stage.setScene(new Scene(vBox));
-                            stage.setTitle(" 触发号: " + triggerNum + " ,通道: " + middle.get().getPID() + " 的采样数据波形图");
-                            stage.show();
-                        });
-
-                    }
-                });
-            }
+                    Stage stage = new Stage();
+                    stage.setScene(new Scene(vBox));
+                    stage.setTitle(" 触发号: " + triggerNum + "源板号" + c.getSourceBoardNum() + " ,通道: " + c.getChannelId() + " 的采样数据波形图");
+                    stage.show();
+                }
+            });
+//                rectangleMap.forEach((k, v) -> {
+//                    if (v.contains(x, y)) {
+//                        Optional<SimplifyData> middle = dataSource.getSdList().stream().filter(l -> l.getPID() == k).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
+//                        middle.ifPresent(simplifyData -> {
+//                            SimplifyData sd = middle.get();
+//                            Optional<SimplifyData> right = dataSource.getSdList().stream()
+//                                    .filter(l -> l.getPID() == k - 1).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
+//                            Optional<SimplifyData> left = dataSource.getSdList().stream()
+//                                    .filter(l -> l.getPID() == k + 1).filter(l -> l.getTriggerNum() == triggerNum).findFirst();
+//                            Paint fill = v.getFill();
+//                            String middleColor = fill.toString();
+//                            Rectangle rectR = rectangleMap.get(k - 1);
+//                            String rightColor = rectR.getFill().toString();
+//                            Rectangle rectL = rectangleMap.get(k + 1);
+//                            String leftColor = rectL.getFill().toString();
+//
+//
+//                            VBox vBox = new VBox();
+//                            vBox.setSpacing(20);
+//
+//                            LineChart<Number, Number> waveChart1 = setWaveChart(middle, "#" + middleColor.substring(2, 8));
+//                            if (channels.get(k - 1).getCol() == sd.getLtpcChannel().getCol()) {
+//                                LineChart<Number, Number> waveChart0 = setWaveChart(right, "#" + rightColor.substring(2, 8));
+//                                vBox.getChildren().add(waveChart0);
+//                            }
+//
+//                            vBox.getChildren().add(waveChart1);
+//
+//                            if (channels.get(k + 1).getCol() == sd.getLtpcChannel().getCol()) {
+//                                LineChart<Number, Number> waveChart2 = setWaveChart(left, "#" + leftColor.substring(2, 8));
+//                                vBox.getChildren().add(waveChart2);
+//                            }
+//
+//                            Stage stage = new Stage();
+//                            stage.setScene(new Scene(vBox));
+//                            stage.setTitle(" 触发号: " + triggerNum + " ,通道: " + middle.get().getPID() + " 的采样数据波形图");
+//                            stage.show();
+//                        });
+//
+//                    }
+//                });
         });
     }
 
     public static void fillRect(ArrayList<SimplifyData> spfd) {
         fillReset();
-        isFilled = true;
-        int chargeMax = dataSource.getChargeMax();
-        int chargeMin = dataSource.getChargeMin();
+        int chargeMax = 2000;
+        int chargeMin = 0;
         Color[] colors = ConfigController.colors;
         int piece = (chargeMax - chargeMin) / colors.length;
         spfd.forEach(
@@ -324,44 +295,83 @@ public class DetectorPaintController {
                     LtpcChannel ltpcChannel = simplifyData.getLtpcChannel();
                     int charge = simplifyData.getCharge();
                     int index = (charge - chargeMin) % piece;
-                    if (index > colors.length-1) {
-                        index = colors.length-1;
+                    if (index > colors.length - 1) {
+                        index = colors.length - 1;
                     }
-                   if (LtpcDetector.getPidChannelMap().containsKey(ltpcChannel.getPid())){
-                       LtpcDetector.getPidChannelMap().get(ltpcChannel.getPid()).setColor(index);
-                   }
-                    if (rectangleMap.containsKey(ltpcChannel.getPid())){
-                        rectangleMap.get(ltpcChannel.getPid()).setFill(colors[index]) ;
+                    Tuple2<Integer, Integer> integerIntegerTuple2 = new Tuple2<>(ltpcChannel.getSourceBoardNum(), ltpcChannel.getChannelId());
+                    if (LtpcDetector.sourceBoardChannelIdChannelMap.containsKey(integerIntegerTuple2)) {
+                        LtpcDetector.sourceBoardChannelIdChannelMap.get(integerIntegerTuple2).setColor(index);
                     }
                 }
         );
     }
 
-    private static void fillReset() {
-        rectangleMap.forEach((k,v)->{
-            v.setFill(colors[0]);
+    public static void fillRectOPT(ResultSet resultSet, TextArea ConfigLog) throws SQLException {
+        fillReset();
+        int chargeMax = 2000;
+        int chargeMin = 0;
+        Color[] colors = ConfigController.colors;
+        int piece = (chargeMax - chargeMin) / colors.length;
+        int i = 0;
+        ConfigLog.appendText("\n sourceBoard , channelId , MaxPoint");
+        while (resultSet.next()) {
+            i++;
+            int sourceBoard = resultSet.getInt(1);
+            int channelId = resultSet.getInt(2);
+            int charge = resultSet.getInt(3);
+            int index = (charge - chargeMin) % piece;
+            ConfigLog.appendText(String.format("\n %d , %d , %d", sourceBoard, channelId, charge));
+            if (index > colors.length - 1) {
+                index = colors.length - 1;
+            }
+            if (LtpcDetector.sourceBoardChannelIdChannelMap.containsKey(sourceBoard + "," + channelId)) {
+                LtpcDetector.sourceBoardChannelIdChannelMap.get(sourceBoard + "," + channelId).setColor(index);
+                LtpcDetector.sourceBoardChannelIdChannelMap.get(sourceBoard + "," + channelId).getRectangle().setFill(colors[index]);
+            }
+        }
+        ConfigLog.appendText("\n Hive sql compeleted！Result :" + i);
+    }
+
+    public static void fillRectOPT(List<Row> rows, TextArea ConfigLog) throws SQLException {
+        fillReset();
+        Integer chargeMax = rows.stream().map(row -> row.getInt(2)).max(Integer::compareTo).get();
+        Integer chargeMin = rows.stream().map(row -> row.getInt(2)).min(Integer::compareTo).get();
+        ConfigController.chargMax = chargeMax;
+        ConfigController.chargMin = chargeMin;
+        ConfigLog.appendText("\n chargeMax :" + chargeMax + " chargeMin :" + chargeMin);
+        Color[] colors = ConfigController.colors;
+        int piece = (chargeMax - chargeMin) / colors.length;
+        ConfigLog.appendText("\n sourceBoard , channelId , MaxPoint");
+        rows.forEach(row -> {
+            int sourceBoard = row.getInt(0);
+            int channelId = row.getInt(1);
+            int charge = row.getInt(2);
+            int index = (charge - chargeMin) / piece;
+            ConfigLog.appendText(String.format("\n %d , %d , %d", sourceBoard, channelId, charge));
+            if (index > colors.length - 1) {
+                index = colors.length - 1;
+            }
+            if (LtpcDetector.sourceBoardChannelIdChannelMap.containsKey(sourceBoard + "," + channelId)) {
+                LtpcDetector.sourceBoardChannelIdChannelMap.get(sourceBoard + "," + channelId).setColor(index);
+                LtpcDetector.sourceBoardChannelIdChannelMap.get(sourceBoard + "," + channelId).getRectangle().setFill(colors[index]);
+            }
         });
-        LtpcDetector.getPidChannelMap().forEach((k,v)->{
-            if (v.getSourceBoardNum()!=0) {
-                v.setColor(0);
+    }
+
+    private static void fillReset() {
+        LtpcDetector.sourceBoardChannelIdChannelMap.forEach((k, v) -> {
+            if (v.getSourceBoardNum() != 0) {
+                v.setColor(-1);
+                v.getRectangle().setFill(Color.WHITE);
             }
         });
     }
 
 
-
-    public static DataSource getDataSource() {
-        return dataSource;
-    }
-
     public static void setDataSource(DataSource dataSource) {
         DetectorPaintController.dataSource = dataSource;
     }
 
-
-    public static int getTriggerNum() {
-        return triggerNum;
-    }
 
     public static void setTriggerNum(int triggerNum) {
         DetectorPaintController.triggerNum = triggerNum;

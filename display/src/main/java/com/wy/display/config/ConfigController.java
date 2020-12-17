@@ -1,14 +1,15 @@
 package com.wy.display.config;
 
 import com.wy.Main;
+import com.wy.Utils.HiveUtil;
+import com.wy.Utils.SSHTool;
 import com.wy.display.config.creatData.CreateData;
-import com.wy.display.config.readData.ScalaAnalyse;
+import com.wy.display.config.readData.ScalaAnalyseSpark;
+import com.wy.display.config.readData.UploadFile;
 import com.wy.display.config.readXML.ReadConfig;
-import com.wy.display.statistics.StatisticsController;
-import com.wy.model.data.SimplifyData;
-import com.wy.model.decetor.LtpcDetector;
 import com.wy.display.detector.DetectorPaintController;
-import com.wy.model.decetor.Tracker;
+import com.wy.model.data.DataSource;
+import com.wy.model.decetor.LtpcDetector;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -20,23 +21,29 @@ import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import com.wy.model.data.DataSource;
-import org.apache.spark.sql.catalyst.expressions.aggregate.Last;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+import sumit.BaseJob;
 
-import java.io.*;
-import java.util.ArrayList;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * @author dgbtds
  */
 public class ConfigController {
     public static Color[] colors = {
-            Color.WHITE,
-             Color.BEIGE,Color.BISQUE,Color.PINK, Color.CYAN,
-            Color.ORANGE ,Color.BLUEVIOLET,Color.RED, Color.YELLOW,
+            Color.BEIGE, Color.BISQUE, Color.PINK, Color.CYAN,
+            Color.ORANGE, Color.BLUEVIOLET, Color.RED, Color.YELLOW,
             Color.GREEN, Color.MAGENTA, Color.CYAN, Color.BLUE
     };
     @FXML
@@ -46,11 +53,11 @@ public class ConfigController {
     @FXML
     public VBox vbox;
     @FXML
-    private TextField channelNum;
+    private TextField channelId;
     @FXML
     private TextField trackerNum;
     @FXML
-    private TextField planeNum;
+    private TextField boardId;
     @FXML
     private TextField triggerNum;
     @FXML
@@ -67,30 +74,37 @@ public class ConfigController {
     private Button fileopenBut;
     @FXML
     private TextArea ConfigLog;
-    private  DataSource dataSource;
+    public static int trigger;
+    public static SparkSession spark;
     private static LtpcDetector ltpcDetector;
+    public static String tableName = "realdata";
+    public static Dataset<BaseJob.datapck> ds = null;
+    private boolean isConfiged = false;
+    private File dir = null;
+    public static int chargMax = colors.length + 1;
+    public static int chargMin = 0;
+    public ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    private boolean isConfiged=false;
-    private File dir=null;
     @FXML
-    private void initialize(){
+    private void initialize() {
+
         ConfigLog.setFont(Font.font(20));
         fileProgressBar.setProgress(0);
         Tooltip triggerTip = new Tooltip("填写触发号,必填");
-        Tooltip planeTip = new Tooltip("填写平面号，必填");
-        Tooltip trackerTip = new Tooltip("填写路径号，可不选");
-        Tooltip channelTip = new Tooltip("填写通道号，可不填");
+        Tooltip trackerTip = new Tooltip("填写路径号，必填");
+        Tooltip boardTip = new Tooltip("填写源板号，选填");
+        Tooltip channelTip = new Tooltip("填写通道号，选填");
         Tooltip imageTip = new Tooltip("打开参考图片");
         triggerNum.setTooltip(triggerTip);
         trackerNum.setTooltip(trackerTip);
-        planeNum.setTooltip(planeTip);
-        channelNum.setTooltip(channelTip);
+        boardId.setTooltip(boardTip);
+        channelId.setTooltip(channelTip);
         image.setTooltip(imageTip);
 
         setIntegerFormatter(triggerNum);
         setIntegerFormatter(trackerNum);
-        setIntegerFormatter(planeNum);
-        setIntegerFormatter(channelNum);
+        setIntegerFormatter(boardId);
+        setIntegerFormatter(channelId);
 
         Tooltip triggerC = new Tooltip("模拟数据触发数");
         triggerCount.setTooltip(triggerC);
@@ -98,12 +112,13 @@ public class ConfigController {
 
         creatBut.setDisable(true);
         colorBut.setDisable(true);
-        fillBut.setDisable(true);
+//        fillBut.setDisable(true);
         fileopenBut.setDisable(true);
 
     }
+
     @FXML
-    public void creatDataAction(){
+    public void creatDataAction() {
         if (isConfiged) {
             String text = triggerCount.getText();
             if (!"".equals(text)) {
@@ -115,33 +130,31 @@ public class ConfigController {
                 fileProgressBar.progressProperty().unbind();
                 fileProgressBar.setProgress(0);
 
-                if (file!=null) {
+                if (file != null) {
                     CreateData createData = new CreateData(file, Integer.parseInt(text));
 
                     //bind bar
                     fileProgressBar.progressProperty().bind(createData.progressProperty());
 
-                    ConfigLog.appendText("\nData Create Start：Path:"+file.getAbsolutePath());
+                    ConfigLog.appendText("\nData Create Start：Path:" + file.getAbsolutePath());
 
                     createData.start();
                     createData.setOnSucceeded(event -> {
-                        ConfigLog.appendText("\nData Create Succeed。Path:"+file.getAbsolutePath());
+                        ConfigLog.appendText("\nData Create Succeed。Path:" + file.getAbsolutePath());
                     });
-                }
-                else {
+                } else {
                     ConfigLog.appendText("\nNot choose fileSavePath");
                 }
-            }
-            else {
+            } else {
                 ConfigLog.appendText("\nTrigger Cannot be null");
             }
-        }
-        else {
+        } else {
             ConfigLog.setStyle("-fx-text-fill:red");
             ConfigLog.appendText("\nPlease Import ConfigFile");
         }
     }
-    private void setIntegerFormatter(TextField t){
+
+    private void setIntegerFormatter(TextField t) {
         TextFormatter<Integer> integerTextFormatter = new TextFormatter<>(
                 change -> {
                     String text = change.getControlNewText();
@@ -154,45 +167,48 @@ public class ConfigController {
         );
         t.setTextFormatter(integerTextFormatter);
     }
+
     @FXML
     private void controlButtonAction() throws Exception {
         FileChooser fileChooser = FileChooseBuild();
         fileChooser.setTitle("Please import excel File");
         File file = fileChooser.showOpenDialog(new Stage());
 //        File file =new File(Main.class.getResource("/detector.xlsx").getFile());
-        if (file!=null) {
+        if (file != null) {
             ConfigLog.setStyle("-fx-text-fill:green");
-            ConfigLog.setText("---------Initial Detector Info--------- \n Path: "+file.getAbsolutePath()+"\n\n");
+            ConfigLog.setText("---------Initial Detector Info--------- \n Path: " + file.getAbsolutePath() + "\n\n");
             ReadConfig.setDetectorByXlxs(file);
             ltpcDetector = ReadConfig.getLtpcDetector();
 //            String s = ltpcDetector.toString();
 //            ConfigLog.appendText(s);
 
             Main.showDetector();
-            dir=file.getParentFile();
-            isConfiged=true;
+            dir = file.getParentFile();
+            isConfiged = true;
             creatBut.setDisable(false);
-            fillBut.setDisable(false);
             fileopenBut.setDisable(false);
 
-        }
-        else {
+        } else {
             ConfigLog.setStyle("-fx-text-fill:red");
             ConfigLog.setText("\nPlease Import ConfigFile");
         }
     }
+
     @FXML
-    private void imageAction(){
-       VBox vBox = new VBox();
+    private void imageAction() {
+        VBox vBox = new VBox();
         ImageView imageView = new ImageView(Main.class.getResource("/DetectorInfo.png").toExternalForm());
-        String s = Tracker.getInfo();
+        String s = "平面: 1    ; 径迹编号: 1,2,3,4,5,6,7,8,9,10,11,12 \n" +
+                "平面: 2    ; 径迹编号: 13,14,15,16,17,18,19,20,21,22,23,24 \n" +
+                "平面: 3    ; 径迹编号: 25,26,27,28,29,30,31,32,33,34,35,36 \n" +
+                "平面: 4# 5# 6# 7# 8# 9  ; 径迹编号: 37# 38# 39# 40# 41# 42 ";
         TextArea textArea = new TextArea(s);
         textArea.setFont(Font.font(20));
         textArea.setStyle("-fx-border-color: red");
         textArea.setStyle("-fx-text-fill: blueviolet");
         textArea.setPrefWidth(vBox.getWidth());
         textArea.setWrapText(true);
-        vBox.getChildren().addAll(textArea,imageView);
+        vBox.getChildren().addAll(textArea, imageView);
 
         Stage stage = new Stage();
         stage.setTitle("Route Info");
@@ -201,108 +217,179 @@ public class ConfigController {
         stage.setScene(new Scene(vBox));
         stage.show();
     }
+
     @FXML
-    private void FileOpenAction() throws IOException {
+    private void FileOpenAction() throws Exception {
         if (isConfiged) {
             FileChooser fileChooser = FileChooseBuild();
             File file = fileChooser.showOpenDialog(new Stage());
-            if (file==null){
+            if (file == null) {
                 ConfigLog.setStyle("-fx-text-fill:red");
                 ConfigLog.appendText("\n\nNot choose file");
-            }
-            else {
+            } else {
+                if (spark != null) {
+                    spark.close();
+                }
                 ConfigLog.appendText("\n\n##################Start Analyse##################\n");
                 ConfigLog.setStyle("-fx-text-fill:mediumvioletred");
-                ConfigLog.appendText("Path:"+file.getAbsolutePath());
+                ConfigLog.appendText("Path:" + file.getAbsolutePath());
+                ConfigLog.appendText("\n\n##################Upload File to Hdfs##################\n");
                 long start = System.currentTimeMillis();
-
+//                upLoadFileAndAnalyse(file,start);
                 fileProgressBar.progressProperty().unbind();
                 fileProgressBar.setProgress(0);
-
-                ScalaAnalyse scalaAnalyse = new ScalaAnalyse(file.getAbsolutePath(),"",fileProgressBar,ConfigLog);
-                scalaAnalyse.start();
-
-                scalaAnalyse.setOnSucceeded(event -> {
-                    this.dataSource = scalaAnalyse.getValue();
-                    if (this.dataSource !=null){
-                        long end = System.currentTimeMillis();
-                        long UseSeconds = (end - start) / 1000;
-                        ConfigLog.appendText("\nData Analyse Over,Use Time: "+UseSeconds+" s");
-                        ConfigLog.appendText("\n##################End Analyse##################\n");
-                        StatisticsController.setDataSource(this.dataSource);
-                        colorBut.setDisable(false);
+                ScalaAnalyseSpark scalaAnalyseSpark = new ScalaAnalyseSpark(file, fileProgressBar, ConfigLog);
+                scalaAnalyseSpark.start();
+                scalaAnalyseSpark.setOnSucceeded(event -> {
+                    ds = scalaAnalyseSpark.getValue();
+                    long end = System.currentTimeMillis();
+                    long UseSeconds = (end - start) / 1000;
+                    ConfigLog.appendText("\nData Analyse Over,Use Time: " + UseSeconds + " s");
+                    ConfigLog.appendText("\nHive Data:http://hd01.ihep.com:8889/hue/editor/?type=hive");
+                    ConfigLog.appendText("\nTable Name: ltpcTable" + file.getName());
+                    colorBut.setDisable(false);
+                    fillBut.setDisable(false);
+                    if (ds == null) {
+                        ConfigLog.appendText("\ndataset is null");
+                    } else {
+                        ConfigLog.appendText("\n" + ds.describe("pckType", "trigger").showString(20, 20, false));
+                        List<Row> error = ds.select("points").where("pckType='error'").limit(100).collectAsList();
+                        if (error.size() > 0) {
+                            ConfigLog.appendText("\nfind " + error.size() + "error packages:");
+                            ConfigLog.appendText("\n points ");
+                            error.forEach(row -> {
+                                ConfigLog.appendText("\n "+row.getString(0));
+                            });
+                        }
                     }
+                    ConfigLog.appendText("\n##################End Analyse##################\n");
                 });
             }
-        }
-        else {
+        } else {
             ConfigLog.setStyle("-fx-text-fill:red");
             ConfigLog.appendText("\n请先配置参数文件");
         }
     }
-    public  FileChooser FileChooseBuild(){
+
+    private void upLoadFileAndAnalyse(File file, long start) {
+        UploadFile uploadFile = new UploadFile(file);
+        uploadFile.start();
+        uploadFile.setOnSucceeded(event -> {
+            if (uploadFile.getValue()) {
+                tableName = "ltpcTable" + file.getName();
+                executorService.submit(new sshtask(file, ConfigLog, start, colorBut, fillBut));
+            } else {
+                ConfigLog.appendText("\n\nUpload File to Hdfs Failed!\n");
+            }
+        });
+    }
+
+
+    static class sshtask implements Runnable {
+        private File file;
+        private TextArea ConfigLog;
+        private long start;
+        private Button colorBut;
+        private Button fillBut;
+        ;
+
+        public sshtask(File file, TextArea configLog, long start, Button colorBut, Button fillBut) {
+            this.file = file;
+            ConfigLog = configLog;
+            this.start = start;
+            this.colorBut = colorBut;
+            this.fillBut = fillBut;
+        }
+
+        @Override
+        public void run() {
+            javafx.application.Platform.runLater(() ->
+            {
+                ConfigLog.appendText("\nUpload File to Hdfs Succeeded!\n");
+                ConfigLog.appendText("Start Remote Spark Job\n");
+                ConfigLog.appendText("\nSpark Job WebUi:http://hd01.ihep.com:8088/cluster/apps/RUNNING\n");
+            });
+            SSHTool tool = new SSHTool("hd01", "root", "online123", StandardCharsets.UTF_8);
+            try {
+                tool.exec("spark-submit --class submit_Spark_CDH.LtpcDataAnalyse --master yarn --deploy-mode cluster --num-executors 10 --executor-cores 3 --executor-memory 6G ./spark-ltpcData-2.1-release.jar " + "hdfs://hd01:8020/user/wy/creat_data/"
+                        + file.getName() + " " + 20 + " "
+                        + "ltpcTable" + file.getName());
+            } catch (IOException e) {
+                javafx.application.Platform.runLater(() ->
+                        ConfigLog.appendText("\nSpark Job Failed :" + e.getMessage() + "\n"));
+            }
+            long end = System.currentTimeMillis();
+            long UseSeconds = (end - start) / 1000;
+            javafx.application.Platform.runLater(() ->
+            {
+                ConfigLog.appendText("\nData Analyse Over,Use Time: " + UseSeconds + " s");
+                ConfigLog.appendText("\nHive Data:http://hd01.ihep.com:8889/hue/editor/?type=hive");
+                ConfigLog.appendText("\nTable Name: ltpcTable" + file.getName());
+                ConfigLog.appendText("\n##################End Analyse##################\n");
+                colorBut.setDisable(false);
+                fillBut.setDisable(false);
+            });
+        }
+    }
+
+    public FileChooser FileChooseBuild() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("所有类型","*.*"),
-                new FileChooser.ExtensionFilter("Excel类型","*.xlsx"),
-                new FileChooser.ExtensionFilter("数据类型","*.bin")
+                new FileChooser.ExtensionFilter("所有类型", "*.*"),
+                new FileChooser.ExtensionFilter("Excel类型", "*.xlsx"),
+                new FileChooser.ExtensionFilter("数据类型", "*.bin")
         );
-        if (dir!=null){
+        if (dir != null) {
             fileChooser.setInitialDirectory(dir);
         }
         return fileChooser;
     }
-    @FXML
-    private void ColorButtonAction(){
-        DataSource dataSource = StatisticsController.getDataSource();
-        if (dataSource==null){
-            ConfigLog.appendText("datasource is null, please check!!!");
-            return;
-        }
 
+    @FXML
+    private void ColorButtonAction() {
         VBox ColorBlock = new VBox();
         VBox labels = new VBox();
         ColorBlock.setPrefHeight(560);
         ColorBlock.setPrefWidth(120);
         ColorBlock.setBorder(new Border(
-                new BorderStroke(Color.DODGERBLUE, BorderStrokeStyle.SOLID,new CornerRadii(10), BorderWidths.DEFAULT)
+                new BorderStroke(Color.DODGERBLUE, BorderStrokeStyle.SOLID, new CornerRadii(10), BorderWidths.DEFAULT)
         ));
         labels.setPrefHeight(560);
         labels.setPrefWidth(120);
         labels.setBorder(new Border(
-                new BorderStroke(Color.DODGERBLUE, BorderStrokeStyle.SOLID,new CornerRadii(10), BorderWidths.DEFAULT)
+                new BorderStroke(Color.DODGERBLUE, BorderStrokeStyle.SOLID, new CornerRadii(10), BorderWidths.DEFAULT)
         ));
 
         double wdith = ColorBlock.getPrefWidth();
         double height = ColorBlock.getPrefHeight();
         int count = colors.length + 1;
 
-        int bin = (dataSource.getChargeMax() - dataSource.getChargeMin()) / count;
-        int lastbin=dataSource.getChargeMax();
+        int bin = (chargMax - chargMin) / count;
+        int lastbin = chargMax;
 
-        for(int i=0;i<colors.length;i++){
-            Rectangle rectangle = new Rectangle(0, height / (double)count, wdith, height / (double)count);
-            rectangle.setFill(colors[colors.length-1-i]);
+        for (int i = 0; i < colors.length; i++) {
+            Rectangle rectangle = new Rectangle(0, height / (double) count, wdith, height / (double) count);
+            rectangle.setFill(colors[colors.length - 1 - i]);
             rectangle.setStyle("-fx-stroke-type:outside");
             ColorBlock.getChildren().add(rectangle);
 
-            Label lab = new Label((lastbin-bin)+"->"+lastbin);
-            lastbin=lastbin-bin;
+            Label lab = new Label((lastbin - bin) + "->" + lastbin);
+            lastbin = lastbin - bin;
             lab.setPrefWidth(wdith);
             lab.setFont(Font.font(15));
-            lab.setPrefHeight(height /(double)count);
+            lab.setPrefHeight(height / (double) count);
             labels.getChildren().add(lab);
         }
         Label label = new Label("颜色标尺");
         label.setPrefWidth(wdith);
         label.setFont(Font.font(20));
-        label.setPrefHeight(height /(double)count);
+        label.setPrefHeight(height / (double) count);
         ColorBlock.getChildren().add(label);
 
         Label label2 = new Label(" 能量区间 ");
         label2.setPrefWidth(wdith);
         label2.setFont(Font.font(20));
-        label2.setPrefHeight(height /(double)count);
+        label2.setPrefHeight(height / (double) count);
         labels.getChildren().add(label2);
 
         Stage stage = new Stage();
@@ -310,92 +397,112 @@ public class ConfigController {
         stage.setTitle("  颜色标尺 ");
 
         HBox hbox = new HBox();
-        hbox.setPrefWidth(2*wdith+10);
+        hbox.setPrefWidth(2 * wdith + 10);
         hbox.setPrefHeight(height);
         hbox.setSpacing(10);
         Scene scene = new Scene(hbox);
-        hbox.getChildren().addAll(ColorBlock,labels);
+        hbox.getChildren().addAll(ColorBlock, labels);
 
         stage.setScene(scene);
         stage.setAlwaysOnTop(true);
         stage.setResizable(false);
         stage.show();
     }
+
     @FXML
-    private void fillButtonAction() {
+    private void fillButtonAction() throws SQLException {
+        if (tableName == null || "".equals(tableName)) {
+            ConfigLog.appendText("\ntableName error");
+            return;
+        }
 
         String triggerS = triggerNum.getText();
-        String planeS = planeNum.getText();
         String trackerS = trackerNum.getText();
-        String channelS = channelNum.getText();
-        Integer trigger = null, plane = null, tracker = null, channel=null;
+        String boardS = boardId.getText();
+        String channelS = channelId.getText();
+        StringBuilder sqlBuilder = new StringBuilder();
+//        sqlBuilder.append("select board,channelid,max_point from " + tableName + " where");
         ConfigLog.setStyle("-fx-text-fill:red");
         try {
             if (!"".equals(triggerS)) {
+                sqlBuilder.append(" trigger=" + triggerS);
                 trigger = Integer.valueOf(triggerS);
             } else {
                 ConfigLog.appendText("\n触发序号必须填写");
                 return;
             }
-
-            if (!("".equals(planeS)&&"".equals(trackerS)) ) {
-                if (!"".equals(planeS)) {
-                    plane = Integer.valueOf(planeS);
-                } else {
-                    plane = null;
-                }
-
-                if (!"".equals(trackerS)) {
-                    tracker = Integer.valueOf(trackerS);
-                } else {
-                    tracker = null;
-                }
+            if (!"".equals(trackerS)) {
+                sqlBuilder.append(" and tracker=" + trackerS);
             } else {
-                ConfigLog.appendText("\n平面序号或者径迹序号必须填写一个");
+                ConfigLog.appendText("\n径迹号必须填写");
                 return;
             }
-
-            if (!"".equals(channelS)) {
-                channel = Integer.valueOf(channelS);
-            } else {
-                channel = null;
+            if (!"".equals(boardS)) {
+                sqlBuilder.append(" and board=" + boardS);
             }
-
+            if (!"".equals(channelS)) {
+                sqlBuilder.append(" and channelId=" + channelS);
+            }
         } catch (NumberFormatException e) {
             ConfigLog.appendText(e.getMessage());
         }
-        if (dataSource==null){
-            ConfigLog.appendText("\n没有数据源");
-            return;
-        }
-        DetectorPaintController.setTriggerNum(trigger);
-        DetectorPaintController.setDataSource(dataSource);
-        List<SimplifyData> sdList =dataSource.getSdList();
-        Integer finalTrigger = trigger;
-        Integer finalPlane = plane;
-        Stream<SimplifyData> simplifyDataStream = sdList.stream()
-                .filter(s -> s.getTriggerNum() == finalTrigger).filter(s -> s.getTriggerNum() == finalTrigger);
-        if (tracker!=null){
-            Integer finalTracker = tracker;
-            Stream<SimplifyData> streamTracker = simplifyDataStream.filter(s -> s.getTrackerNum() == finalTracker);
-            if (channel!=null){
-                Integer finalChannel = channel;
-                ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamTracker.filter(s -> s.getTrackerNum() == finalChannel).collect(Collectors.toList());
-                DetectorPaintController.fillRect(collect);
-                ConfigLog.appendText("\n填充 触发号:"+planeS+" 径迹"+trackerS+" 通道"+channelS+" 成功！");
+        ConfigLog.appendText("\nlinking to spark sql:" + sqlBuilder.toString());
+        executorService.submit(() -> {
+            Dataset<Row> where = ds.select("board", "channelId", "max_point").where(sqlBuilder.toString());
+            ConfigLog.appendText("\n Spark sql compeleted！Result describe:\n" + where.describe().showString(20, 0, false));
+            List<Row> rows = where.collectAsList();
+            if (rows.size() > 0) {
+                try {
+                    DetectorPaintController.fillRectOPT(rows, ConfigLog);
+                } catch (SQLException e) {
+                    ConfigLog.appendText(e.getMessage());
+                }
             }
-            else {
-                ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamTracker.collect(Collectors.toList());
-                DetectorPaintController.fillRect(collect);
-                ConfigLog.appendText("\n填充 触发号:"+planeS+" 径迹"+trackerS+" 成功！");
-            }
+        });
+
+
+//          Hive job
+//        executorService.submit(() -> {
+//        ConfigLog.appendText("\nlinking to Hive sql:" + sqlBuilder.toString());
+//            try {
+//
+//                ResultSet resultSet = new HiveUtil(ConfigLog).SQLResult(sqlBuilder.toString());
+//                if (resultSet == null) {
+//                    ConfigLog.appendText("\n Hive sql failed!");
+//                    return;
+//                }
+//                javafx.application.Platform.runLater(() ->
+//                {
+//                    try {
+//                        DetectorPaintController.fillRectOPT(resultSet,ConfigLog);
+//                    } catch (SQLException e) {
+//                        e.printStackTrace();
+//                    }
+//                });
+//
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//        });
+    }
+
+    static class sparkTask implements Callable<String>, Serializable {
+        private String sql;
+
+        public sparkTask(String sql) {
+            this.sql = sql;
         }
-        else {
-            Stream<SimplifyData> streamPlane=simplifyDataStream.filter(s -> s.getPlaneNum() == finalPlane);
-            ArrayList<SimplifyData> collect = (ArrayList<SimplifyData>) streamPlane.collect(Collectors.toList());
-            DetectorPaintController.fillRect(collect);
-            ConfigLog.appendText("\n填充 触发号:"+triggerS+"平面:"+planeS+"成功！");
+
+        @Override
+        public String call() throws SQLException {
+            return null;
         }
+    }
+
+    public static void main(String[] args) throws SQLException {
+        ConfigController configController = new ConfigController();
+        ConfigController.tableName = "ltpctable100";
+        configController.fillButtonAction();
     }
 
     public static LtpcDetector getLtpcDetector() {

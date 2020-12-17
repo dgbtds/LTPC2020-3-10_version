@@ -1,24 +1,25 @@
 package scala.sumit
 
-import java.io.{BufferedOutputStream, File, FileOutputStream, RandomAccessFile}
-import java.nio.channels.FileChannel.MapMode
+import java.io.File
 import java.util
 import java.util.Properties
 
-import com.wy.Utils.KryoUtil
+import com.google.common.base.Charsets
+import com.wy.display.config.ConfigController
 import com.wy.display.config.readXML.ReadConfig
-import com.wy.model.data.{DataSource, SimplifyData}
+import com.wy.input.MyTextInputFormat
+import com.wy.model.data.SimplifyData
 import com.wy.model.decetor.{LtpcChannel, LtpcDetector}
 import javafx.scene.control.{ProgressBar, TextArea}
 import listerner.SparkJobListener
 import org.apache.commons.codec.binary.Base64
 import org.apache.hadoop.io.{LongWritable, Text}
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.apache.spark.sql.{Dataset, SaveMode, SparkSession}
+import sumit.BaseJob
+import sumit.BaseJob.{byteArrayToInt, datapck}
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.StringUtil
 
@@ -39,35 +40,26 @@ object LocalSubmitApp {
 
 		SparkSession.clearDefaultSession()
 		val spark = SparkSession.builder().config(conf).getOrCreate()
+		//		spark.sql("select count(*),trigger from test group by trigger order by trigger ").show(true)
+		//		spark.sql("select count(*),pckType from test group by pckType").show(true)
+		//		spark.sql("select pckType,points from test where pckType='error'").show(false)
 
-
-		val dataSource = AnalyseData.MainJob(spark, "C:\\Users\\dgbtds\\Desktop\\LtpcExe\\MyApp\\CreatData\\1000", 1)
-		SparkSession.clearDefaultSession()
-		spark.sparkContext.stop()
+		AnalyseData.MainJobOPT(spark, "C:\\Users\\dgbtds\\Desktop\\LtpcExe\\MyApp\\CreatData\\LaserH_45_1.bin", 1)
 	}
 
-	def analyseData(localFile: String, out_file: String, fileProgressBar: ProgressBar, ConfigLog: TextArea): DataSource = {
+
+	def analyseDataOPT(localFile: String, fileProgressBar: ProgressBar, ConfigLog: TextArea):Dataset[datapck]= {
 		ConfigLog.clear()
-		ConfigLog.setStyle("-fx-text-fill:blue")
-		ConfigLog.appendText("\n*********Search From History Record*********")
-		AnalyseData.read4fileIfexist(localFile) match {
-			case Some(dataSource) => dataSource
-			case None =>
-				ConfigLog.setStyle("-fx-text-fill:red")
-				ConfigLog.appendText("\n*********History Record Not Exists*********")
-				ConfigLog.appendText("\n*********Start Spark Analyse*********")
-				ConfigLog.appendText("\n*********Linked to Spark*********")
-				val AppName = "analyseData"
-				val master = "local[*]"
-				//sparkContext
-				val spark = SparkSession.builder().master(master).appName(AppName).getOrCreate()
-				spark.sparkContext.addSparkListener(new SparkJobListener(6, fileProgressBar, ConfigLog))
-
-				val dataSource = AnalyseData.MainJob(spark, localFile, 1)
-				spark.sparkContext.stop()
-				dataSource
-		}
-
+		ConfigLog.setStyle("-fx-text-fill:red")
+		ConfigLog.appendText("\n*********Start Spark Analyse*********")
+		ConfigLog.appendText("\n*********Linked to Spark*********")
+		val AppName = "analyseData"
+		val master = "local[*]"
+		//sparkContext
+		val spark = SparkSession.builder().master(master).appName(AppName).getOrCreate()
+		ConfigController.spark=spark
+		spark.sparkContext.addSparkListener(new SparkJobListener(6, fileProgressBar, ConfigLog))
+		AnalyseData.MainJobOPTSingle(spark, localFile)
 	}
 
 }
@@ -104,77 +96,125 @@ object AnalyseData {
 	val timemap = new util.HashMap[Integer, java.lang.Long]()
 
 
-	def MainJob(spark: SparkSession, datafilePath: String, minPartitions: Int): DataSource = {
-		setChannelMap()
-		rddAnalyse(spark, datafilePath, minPartitions)
-	}
 
-	def rddAnalyse(spark: SparkSession, datafilePath: String, minPartitions: Int): DataSource = {
+	def MainJobOPT(spark: SparkSession, datafilePath: String, minPartitions: Int) {
+		rddAnalyseOpt(spark, datafilePath, minPartitions)
+	}
+	def MainJobOPTSingle(spark: SparkSession, datafilePath: String):Dataset[datapck]= {
+		rddAnalyseOptSingle(spark, datafilePath)
+	}
+	def rddAnalyseOptSingle(spark: SparkSession, datafilePath: String) :Dataset[datapck]={
 		val datafilePath0 = "file:///" + datafilePath
 		val sc = spark.sparkContext
-		val bytes1 = StringUtil.intToByteArray(trailer)
-		val str = new String(bytes1, "ISO-8859-1")
-		sc.hadoopConfiguration.set("textinputformat.record.delimiter",str)
-		val rdd = sc.newAPIHadoopFile(datafilePath0, classOf[TextInputFormat], classOf[LongWritable], classOf[Text])
-		val rawDataPckcount = rdd.count()
-		val rdd2 = rdd.map(
-			pair =>
-				new String(pair._2.getBytes, 0, pair._2.getLength, "ISO-8859-1").getBytes("ISO-8859-1"))
-		val timeMap = rdd2.filter(
-			arr =>
-				(arr(12) & 0xff) >> 6 == 3).
-			map(arr => ((
-				arr(14) & 0xff) << 8 | (arr(15) & 0xff)
-				, (arr(22) & 0xff) << 40 | (arr(23) & 0xff) << 32 | (arr(24) & 0xff) << 24 | (arr(25) & 0xff) << 16 | (arr(26) & 0xff) << 8 | (arr(27) & 0xff)))
-			.sortByKey(true).collect().toMap
-		timeMap.foreach(k => {
-			timemap.put(k._1, k._2)
-		})
-		val rdd3 = rdd2.filter(arr => (arr(12) & 0xff) >> 6 == 2)
-		val countMap = rdd3.map(arr => ((arr(20) & 0xff) << 8 | (arr(21) & 0xff), 1)).reduceByKey(_ + _)
-			.sortByKey(true).collect().toMap
-		countMap.foreach(k => {
-			hashmap.put(k._1, k._2)
-		})
-		val rdd4 = rdd3
-			.map(arr => {
-				processSimpleData(arr)
-			})
-			.filter {
-				case Some(_) => true
-				case None => false
+		import scala.collection.mutable.ListBuffer
+
+		val board_channelId_trackers = LtpcDetector.sourceBoardChannelIdChannelMap
+		//        ---------------    creat rdd by txt ---------------------
+		val header = new String(BaseJob.intToByteArray(0x1eadc0de), Charsets.ISO_8859_1)
+
+		sc.hadoopConfiguration.set("textinputformat.record.delimiter", header)
+		val rdd0 = sc.newAPIHadoopFile(datafilePath0, classOf[MyTextInputFormat], classOf[LongWritable], classOf[Text], sc.hadoopConfiguration)
+		import spark.implicits._
+		val ds = rdd0.mapPartitions(iter => {
+			val buffer = ListBuffer[datapck]()
+			while (iter.hasNext) {
+				val text = iter.next()._2
+				val arr = text.getBytes
+				if (arr.length > 8) {
+					val flag = ((arr(8) & 0xff) >> 6)
+					if (flag == 2) {
+						val outs = BaseJob.splitDataSingle(arr, board_channelId_trackers)
+						for(i<-outs.indices){
+							buffer.append(outs(i))
+						}
+					}
+					else if (flag == 3) {
+						val trigger = (arr(10) & 0xff) << 8 | (arr(11) & 0xff)
+						val time_left = (arr(18) & 0xff) << 8 | (arr(19) & 0xff)
+						val time_right = byteArrayToInt(arr, 20)
+						val timepck = datapck("time", trigger, 0, time_left, time_right, 0, 0, 0, 0, 0, "timePck,")
+						buffer.append(timepck)
+					}
+					else {
+						val errorpck = datapck("error", -1, flag, 0, 0, 0, 0, 0, 0, 0, "flag!=2,3 ,tracker is flag")
+						buffer.append(errorpck)
+					}
+				}
+				else {
+					if (arr.nonEmpty) {
+						val errorpck = datapck("error", -1, 0, 0, 0, 0, 0, 0, 0, 0, "arr.length <8")
+						buffer.append(errorpck)
+					}
+				}
 			}
-			.flatMap(opt => opt.get)
+			buffer.iterator
+		}).toDS()
 
-		val sfdList = rdd4.collect().toList
-		val dataSource = new DataSource
-		setChargeLimit(sfdList)
-		dataSource.setFilePath(datafilePath)
-		dataSource.setRawDataPackageCount(rawDataPckcount.toInt)
-		dataSource.setTriggerCount(timemap.size())
-		dataSource.setEveryTriggerPckCount(hashmap)
-
-		dataSource.setSdList(sfdList.asJava)
-		dataSource.setChargeMax(chargeMax)
-		dataSource.setChargeMin(chargeMin)
-		dataSource.setEveryTriggerTime(timemap)
-		dataSource.setAllPackageCount(sfdList.size)
-		setBoardClick()
-		if (isSerializable) {
-			save2file(dataSource, datafilePath)
-		}
-		dataSource
+		ds.createTempView(ConfigController.tableName)
+		ds
 	}
 
+	def rddAnalyseOpt(spark: SparkSession, datafilePath: String, minPartitions: Int) {
+		val datafilePath0 = "file:///" + datafilePath
+		val sc = spark.sparkContext
+		import scala.collection.mutable.ListBuffer
+		print("start spark job")
 
-	def save2file(dataSource: DataSource, datafilePath: String): Unit = {
-		val bytes = KryoUtil.serializationObject(dataSource)
-		val savefilePath = getSaveFilePath(datafilePath)
-		val bos = new BufferedOutputStream(
-			new FileOutputStream(savefilePath));
-		bos.write(bytes)
-		bos.close()
+		val board_channelId_trackers = BaseJob.createMap(sc, spark)
+		//        ---------------    creat rdd by txt ---------------------
+		val header = new String(BaseJob.intToByteArray(0x1eadc0de), Charsets.ISO_8859_1)
+
+		sc.hadoopConfiguration.set("textinputformat.record.delimiter", header)
+		val rdd0 = sc.newAPIHadoopFile(datafilePath0, classOf[MyTextInputFormat], classOf[LongWritable], classOf[Text], sc.hadoopConfiguration)
+		import spark.implicits._
+		val ds = rdd0.mapPartitions(iter => {
+			val buffer = ListBuffer[datapck]()
+			while (iter.hasNext) {
+				val text = iter.next()._2
+				val arr = text.getBytes
+				if (arr.length > 8) {
+					val flag = ((arr(8) & 0xff) >> 6)
+					if (flag == 2) {
+						val array = BaseJob.splitData(arr, board_channelId_trackers)
+						if (array.length == 0) {
+							val channelId = arr(8) & 0x3f
+							val board = arr(5) & 0xff
+							val errorpck = datapck("error", -1, 0, 0, 0, 0, 0, 0, 0, 0, "board: " + board + " ,channelID: " + channelId + " not Exist")
+							buffer.append(errorpck)
+						}
+						array.foreach(ints => {
+							val ints1 = ints.slice(9, ints.length)
+							val str = ints1.mkString(";")
+							val samplepck = datapck("sample", ints(0), ints(1), ints(2), ints(3), ints(4), ints(5), ints(6), ints(7), ints(8), str)
+							buffer.append(samplepck)
+						})
+					}
+					else if (flag == 3) {
+						val trigger = (arr(10) & 0xff) << 8 | (arr(11) & 0xff)
+						val time_left = (arr(18) & 0xff) << 8 | (arr(19) & 0xff)
+						val time_right = byteArrayToInt(arr, 20)
+						val timepck = datapck("time", trigger, 0, time_left, time_right, 0, 0, 0, 0, 0, "timePck,")
+						buffer.append(timepck)
+					}
+					else {
+						val errorpck = datapck("error", -1, flag, 0, 0, 0, 0, 0, 0, 0, "flag!=2,3 ,tracker is flag")
+						buffer.append(errorpck)
+					}
+				}
+				else {
+					if (arr.nonEmpty) {
+						val errorpck = datapck("error", -1, 0, 0, 0, 0, 0, 0, 0, 0, "arr.length <8")
+						buffer.append(errorpck)
+					}
+				}
+			}
+			buffer.iterator
+		}).toDS()
+
+		ds.createTempView("test")
+		//spark.sql("select count(*),t.trigger from (SELECT a.trigger FROM test a GROUP BY a.trigger,a.board,a.channelid ) as t GROUP BY t.trigger ORDER BY t.trigger Desc").show(true)
 	}
+
 
 	private def getSaveFilePath(datafilePath: String): String = {
 		val file = new File(datafilePath)
@@ -187,28 +227,6 @@ object AnalyseData {
 		savefilePath
 	}
 
-	def read4fileIfexist(datafilePath: String): Option[DataSource] = {
-		if (!isSerializable) {
-			return None
-		}
-		val savefilePath = getSaveFilePath(datafilePath)
-		val file = new File(savefilePath)
-		if (file.exists() && isSerializable) {
-			//Kryo
-			val fc = new RandomAccessFile(file, "r").getChannel
-			val byteBuffer = fc.map(MapMode.READ_ONLY, 0, fc.size).load
-			System.out.println(byteBuffer.isLoaded)
-			val bytes = new Array[Byte](fc.size().toInt)
-			if (byteBuffer.remaining > 0) {
-				byteBuffer.get(bytes, 0, byteBuffer.remaining)
-			}
-			val datasource = KryoUtil.deserializationObject(bytes, classOf[DataSource])
-			Some(datasource)
-		}
-		else {
-			None
-		}
-	}
 
 	def saveRdd2Mysql(spark: SparkSession, rdd: RDD[SimplifyData], tableName: String): Unit = {
 		val prop = new Properties()
@@ -226,20 +244,6 @@ object AnalyseData {
 		})
 	}
 
-	private def setBoardClick(): Unit = {
-		val map = LtpcDetector.SourceBoardMap.asScala
-		map.foreach(k => {
-			val sum = k._2.getLtpcChannels.asScala.map(l => l.getClickCount).sum
-			k._2.setClickCount(sum)
-		})
-	}
-
-	def setChannelMap(): Unit = {
-		val channels = ReadConfig.getLtpcDetector.getChannels.asScala
-		channels.foreach(c => {
-			ChannelMap.put((c.getSourceBoardNum, c.getChannelId), c)
-		})
-	}
 
 	def findMax(dataPoints: Array[Short], start: Int, end: Int) = {
 		var MIndex = start
@@ -253,66 +257,8 @@ object AnalyseData {
 		if (start + 3 >= arr.length) {
 			return false
 		}
-		StringUtil.byteArrayToInt(arr, start)==num
+		StringUtil.byteArrayToInt(arr, start) == num
 	}
 
-	//处理单个数据包
-	private def processSimpleData(arr: Array[Byte]): Option[Array[SimplifyData]] = {
-		if (arr.length<22){
-			println(" package short than 22")
-			return None
-		}
-		if ( !compareInt(arr, 0, header)) {
-			println("Trigger " + ((arr(20) & 0xff) << 8 | (arr(21) & 0xff)) + " package header is not complete")
-			return None
-		}
-		val channelId = arr(12) & 0x3f
-		ChannelMap.get((arr(9) & 0xff, channelId)) match {
-			case Some(ltpcChannel) => {
-				ltpcChannel.setClickCount(ltpcChannel.getClickCount + 1)
-
-				val simpleLength = arr(13).toInt * 16
-				val dataPoints = new Array[Short](simpleLength)
-				try {
-					for (i <- 0 to dataPoints.length - 1) {
-						dataPoints(i) =
-							((arr(20 + 2 * i) & 0x0f) << 8 |
-								(arr(21 + 2 * i) & 0xff)).toShort
-					}
-				} catch {
-					case e: ArrayIndexOutOfBoundsException => println("ArrayIndexOutOfBoundsException")
-				}
-
-				val planeWithTracks = ltpcChannel.getPlaneWithTracks
-				val piece = planeWithTracks.length
-				var Size = simpleLength / piece + 1
-				var start = 0
-				var end = 0
-				val sfdArr = new Array[SimplifyData](piece)
-				for (i <- 0 until piece) {
-					val sd = new SimplifyData
-					end = start + Size * (i + 1)
-					if (end > dataPoints.length)
-						end = dataPoints.length - 1
-					val max = findMax(dataPoints, start, end)
-					sd.setLtpcChannel(ltpcChannel)
-					sd.setTriggerNum((arr(20) & 0xff) << 8 | (arr(21) & 0xff))
-					sd.setTrackerNum(planeWithTracks(i).getTracker.trackerNum)
-					sd.setCharge(dataPoints(max).toInt)
-					sd.setPID(ltpcChannel.getPid)
-					sd.setPlaneNum(planeWithTracks(i).getPlane.planeNum)
-					if (sd.getTriggerNum <= cacheTriggerNum)
-						sd.setShorts(dataPoints)
-					start += Size
-					sfdArr(i) = sd
-				}
-				Some(sfdArr)
-			}
-			case None => {
-				println(s"(${arr(9).toInt}.toInt,${channelId}) not match channel")
-				None
-			}
-		}
-	}
 }
 

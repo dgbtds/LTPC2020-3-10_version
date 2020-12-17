@@ -2,6 +2,7 @@ package com.wy.display.config.creatData;
 
 import com.wy.display.config.readXML.ReadConfig;
 import com.wy.model.decetor.LtpcChannel;
+import com.wy.model.decetor.LtpcDetector;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 
@@ -80,7 +81,7 @@ public class CreateData  extends Service<Integer> {
         return new Task<Integer>() {
             @Override
             protected Integer call() throws Exception {
-                List<LtpcChannel> ltpcChannels = ReadConfig.getLtpcDetector().getChannels();
+                List<LtpcChannel> ltpcChannels = LtpcDetector.channels;
                 DataOutputStream dos = new DataOutputStream(new FileOutputStream(file));
                 long External_trigger_timestamp=0xff00ffff0000L;
                 if (trigger<1){

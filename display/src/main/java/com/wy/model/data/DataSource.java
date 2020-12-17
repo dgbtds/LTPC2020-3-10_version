@@ -112,8 +112,8 @@ public class DataSource implements Serializable {
         stringBuilder.append("\nMin pointEnergy："+chargeMin+"\n");
         stringBuilder.append("\nData rate"+(double)allPackageCount/(double)(triggerCount*20)+"\n");
         stringBuilder.append("\nEveryPackage Count： \n");
-        LtpcDetector.SourceBoardMap.forEach((k,v)->{
-            stringBuilder.append("SourceBoardId: "+k+" , ClickCount: "+v.getClickCount()+"\n");
+        LtpcDetector.SourceBoardChannelsMap.forEach((k,v)->{
+            stringBuilder.append("SourceBoardId: "+k+" , ClickCount: "+v.clickCount+"\n");
         });
         everyTriggerPckCount.forEach( (k,v)->{
             stringBuilder.append("      Trigger: "+k+" , packageCount: "+v+"\n");

@@ -23,11 +23,19 @@ public class LtpcChannel implements Serializable {
     private int slope;//倾斜角度
     private int sourceBoardNum;//来源板号
     private Rectangle rectangle;
-    private PlaneWithTrack[] planeWithTracks;
+    private int[] trackNums;
     private int ClickCount = 0;
-    private int color = 0;
+    private int color = -1;
 
-	public int getColor() {
+    public int[] getTrackNums() {
+        return trackNums;
+    }
+
+    public void setTrackNums(int[] trackNums) {
+        this.trackNums = trackNums;
+    }
+
+    public int getColor() {
 		return color;
 	}
 
@@ -43,13 +51,6 @@ public class LtpcChannel implements Serializable {
         ClickCount = clickCount;
     }
 
-    public PlaneWithTrack[] getPlaneWithTracks() {
-        return planeWithTracks;
-    }
-
-    public void setPlaneWithTracks(PlaneWithTrack[] planeWithTracks) {
-        this.planeWithTracks = planeWithTracks;
-    }
 
     public int getSourceBoardNum() {
         return sourceBoardNum;
@@ -201,5 +202,68 @@ public class LtpcChannel implements Serializable {
                 ", slope=" + slope +
                 ", sourceBoardNum=" + sourceBoardNum +
                 '}';
+    }
+    public void computeTracks() {
+        switch (area) {
+            case 0:
+                trackNums = new int[]{37, 38, 39, 40, 41, 42};
+                break;
+            case 1:
+                trackNums = new int[]{board + 1, board + 13, board + 25};
+                break;
+            case 2:
+                trackNums = new int[]{board + 7, board + 19, board + 31};
+                break;
+            case 3:
+                switch (board) {
+                    case (0):
+                        trackNums = new int[]{2,  19,  31};
+                        break;
+                    case (1):
+                        trackNums = new int[]{1,13, 25};
+                        break;
+                    case (2):
+                        trackNums = new int[]{4, 16, 28};
+                        break;
+                    case (3):
+                        trackNums = new int[]{3, 15, 27};
+                        break;
+                    case (4):
+                        trackNums = new int[]{6, 18, 30};
+                        break;
+                    case (5):
+                        trackNums = new int[]{5, 17, 29};
+                        break;
+                    default:
+                        throw new RuntimeException("area:"+area+" , board error: " +board);
+                }
+                break;
+            case 4:
+                switch (board) {
+                    case (0):
+                        trackNums = new int[]{8, 20, 32};
+                        break;
+                    case (1):
+                        trackNums = new int[]{7, 19, 31};
+                        break;
+                    case (2):
+                        trackNums = new int[]{10, 22, 34};
+                        break;
+                    case (3):
+                        trackNums = new int[]{9, 21, 33};
+                        break;
+                    case (4):
+                        trackNums = new int[]{12, 24, 36};
+                        break;
+                    case (5):
+                        trackNums = new int[]{11, 23, 35};
+                        break;
+                    default:
+                        throw new RuntimeException("area:"+area+" , board error: " + board);
+                }
+                break;
+            default:
+                throw new RuntimeException("case error: " + area);
+        }
     }
 }
